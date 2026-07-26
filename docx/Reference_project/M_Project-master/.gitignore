@@ -1,0 +1,18 @@
+# IDE
+.idea/
+.vscode/
+
+# Build output
+cmake-build-*/
+build/
+*.elf
+*.bin
+*.hex
+*.map
+
+# Test outputs (临时测试结果不入库)
+test_results/
+
+# OS junk
+Thumbs.db
+Desktop.ini

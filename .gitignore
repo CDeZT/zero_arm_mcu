@@ -1,0 +1,33 @@
+# ===== IDE =====
+.idea/workspace.xml
+.idea/shelf/
+.idea/httpRequests/
+.idea/queries/
+.idea/dataSources/
+.idea/dataSources.local.xml
+
+# ===== Build output =====
+build/
+cmake-build-*/
+cmake-build-debug/
+cmake-build-release/
+
+# ===== Compiled output =====
+*.o
+*.d
+*.elf
+*.hex
+*.bin
+*.map
+*.out
+*.exe
+
+# ===== OS files =====
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ===== Simulink / MATLAB cache =====
+slprj/
+*.mldatx
+export.log
