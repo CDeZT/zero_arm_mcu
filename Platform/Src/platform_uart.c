@@ -144,8 +144,13 @@ void platform_uart_on_rx_position(uint16_t position)
             position);
     }
 
-    g_uart_rx_last_position =
-        position % UART_RX_DMA_SIZE;
+    /*
+     * Keep UART_RX_DMA_SIZE as a valid sentinel.  ReceiveToIdle DMA may
+     * report the end position more than once (for example TC followed by
+     * IDLE).  Folding it to zero would make the repeated notification look
+     * like a fresh full-buffer transfer and duplicate all received bytes.
+     */
+    g_uart_rx_last_position = position;
 
     osEventFlagsSet(
         s_host_events,

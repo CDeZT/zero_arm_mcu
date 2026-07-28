@@ -78,6 +78,33 @@ add_test(
     COMMAND test_platform_fdcan
 )
 
+add_executable(test_platform_uart
+    test_platform_uart.c
+    Stubs/cmsis_os2.h
+    Stubs/usart.h
+    ../Config/build_config.h
+    ../Platform/Inc/platform_uart.h
+    ../Platform/Src/platform_uart.c
+)
+
+target_include_directories(test_platform_uart PRIVATE
+    Stubs
+    ../App/Inc
+    ../Config
+    ../Platform/Inc
+)
+
+target_compile_options(test_platform_uart PRIVATE
+    -Wall
+    -Wextra
+    -Werror
+)
+
+add_test(
+    NAME test_platform_uart
+    COMMAND test_platform_uart
+)
+
 add_executable(test_motor_manager
     test_motor_manager.c
     Stubs/cmsis_os2.h
