@@ -134,5 +134,6 @@ bool trajectory_step(
     }
 
     sample->reached = reached;
+    g_active = !reached;
     return true;
 }

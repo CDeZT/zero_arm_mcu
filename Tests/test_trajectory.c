@@ -224,6 +224,52 @@ static void test_large_period_and_extreme_targets(void)
     assert(sample.reached);
 }
 
+static void test_reached_target_deactivates_until_new_target(void)
+{
+    assert(trajectory_init());
+
+    robot_joint_target_t target;
+    target_set_to_configured_zero(&target);
+
+    const uint8_t joint = 1U;
+    const joint_config_t *config =
+        joint_config_get(joint);
+    assert(config != NULL);
+
+    target.joint_urad[joint] =
+        config->zero_urad + 1;
+    assert(trajectory_set_target(&target));
+
+    trajectory_sample_t sample;
+    assert(trajectory_step(TEST_PERIOD_MS, &sample));
+    assert(sample.output_urad[joint] ==
+           target.joint_urad[joint]);
+    assert(sample.reached);
+
+    for (uint8_t index = 0U;
+         index < ROBOT_JOINT_COUNT;
+         index++) {
+        sample.output_urad[index] = INT32_MIN;
+    }
+    sample.reached = false;
+
+    assert(!trajectory_step(TEST_PERIOD_MS, &sample));
+    for (uint8_t index = 0U;
+         index < ROBOT_JOINT_COUNT;
+         index++) {
+        assert(sample.output_urad[index] == INT32_MIN);
+    }
+    assert(!sample.reached);
+
+    target.joint_urad[joint] =
+        config->zero_urad + 2;
+    assert(trajectory_set_target(&target));
+    assert(trajectory_step(TEST_PERIOD_MS, &sample));
+    assert(sample.output_urad[joint] ==
+           target.joint_urad[joint]);
+    assert(sample.reached);
+}
+
 static void test_invalid_calls_do_not_publish_sample(void)
 {
     assert(trajectory_init());
@@ -263,6 +309,7 @@ int main(void)
     test_each_joint_is_limited_independently();
     test_stop_freezes_and_new_target_resumes();
     test_large_period_and_extreme_targets();
+    test_reached_target_deactivates_until_new_target();
     test_invalid_calls_do_not_publish_sample();
 
     puts("test_trajectory: all checks passed");

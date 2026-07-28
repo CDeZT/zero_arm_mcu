@@ -12,7 +12,9 @@ typedef struct {
 
 /*
  * The trajectory starts at each joint's configured zero position. Targets are
- * position-limited independently using max_velocity_urad_s.
+ * position-limited independently using max_velocity_urad_s. The final sample
+ * is published once with reached=true, then stepping remains inactive until a
+ * new target is set.
  */
 bool trajectory_init(void);
 bool trajectory_set_target(const robot_joint_target_t *target);
