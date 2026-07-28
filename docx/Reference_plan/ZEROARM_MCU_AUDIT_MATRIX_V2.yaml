@@ -1,0 +1,246 @@
+audit:
+  schema: zeroarm-mcu-audit/v2
+  updated: "2026-07-28"
+  master_plan: ZEROARM_MCU_AUDIT_REMEDIATION_MASTER_PLAN_V2.md
+  scope:
+    - known_defects
+    - unknown_defect_discovery
+    - correctness_repairs
+    - measurable_optimization
+    - readonly_hardware_validation
+    - gated_mechanical_validation
+
+baseline:
+  commits:
+    protocol_builder: 653b994
+    trajectory_completion: ebb271c
+    x_v2_scaling: 1422e69
+    upper_computer_specification: 600fd53
+  host_test_targets: 16
+  sanitizer: [address, undefined]
+  stm32_preset: Debug
+  firmware: build/Debug/zero_arm_mcu.elf
+  readonly_commands: [HELLO, GET_STATE]
+  action_commands_default_allowed: false
+
+severity:
+  P0: memory_corruption_undefined_behavior_wrong_motion_release_or_stop_failure
+  P1: silent_failure_false_success_incorrect_state_or_permanent_message_loss
+  P2: incomplete_recovery_diagnostics_staleness_or_resource_lifecycle
+  P3: measurable_performance_or_maintainability
+  H: hardware_fact_requires_physical_gate
+
+known:
+  committed_fixed:
+    - id: K-PROTO-BUILD-01
+      commit: 653b994
+    - id: K-TRAJ-01
+      commit: ebb271c
+    - id: K-XV2-NUM-01
+      commit: 1422e69
+
+  fixed_pending_atomic_commit:
+    - K-UART-01
+    - K-LOCK-01
+    - K-LOCK-02
+    - K-TEST-01
+    - K-TOOL-01
+
+  repairable:
+    - K-FAULT-01
+    - K-MOTOR-01
+    - K-SVC-01
+    - K-TEACH-01
+    - K-HOST-01
+    - K-EVENT-01
+    - K-EVENT-02
+    - K-MOTION-01
+    - K-STATE-01
+    - K-STATE-02
+    - K-FEEDBACK-01
+    - K-FEEDBACK-02
+    - K-TEACH-02
+    - K-TEACH-03
+    - K-START-01
+    - K-PARSER-01
+    - K-PROTO-01
+    - K-PROTO-02
+    - K-PROTO-03
+    - K-RECOVERY-01
+
+  physical_gate:
+    - H-ADDR-01
+    - H-DIR-01
+    - H-CAL-01
+    - H-CAN-01
+    - H-TEACH-01
+    - H-REENABLE-01
+    - H-LIMIT-01
+    - H-HOME-01
+
+discovery:
+  compiler_matrix:
+    host: [gcc, clang]
+    target: [arm_gcc_debug, arm_gcc_release]
+    strict_warnings:
+      - conversion
+      - sign_conversion
+      - shadow
+      - format_2
+      - undef
+      - cast_align
+      - missing_prototypes
+      - double_promotion
+
+  static_analysis:
+    - clang_analyzer
+    - clang_tidy
+    - cppcheck
+    - manual_invariant_review
+
+  dynamic_analysis:
+    - asan
+    - ubsan
+    - leak_sanitizer_when_supported
+    - thread_sanitizer_on_supported_ci
+
+  fuzz:
+    protocol:
+      min_inputs: 1000000
+      continuous_minutes: 30
+      properties:
+        - bounded_memory
+        - no_crash
+        - no_infinite_loop
+        - invalid_frame_never_calls_handler
+        - bad_then_good_eventual_recovery
+        - chunking_invariant
+        - encode_decode_roundtrip
+    state_machine:
+      random_event_sequences: 100000
+      compare_reference_model: true
+    rtos_fault_injection:
+      random_schedules: 100000
+      calls:
+        - mutex_acquire
+        - mutex_release
+        - queue_put
+        - queue_get
+        - event_set
+        - event_wait
+        - resource_create
+        - thread_create
+        - delay_until
+
+  boundaries:
+    protocol_lengths: [0, 1, 127, 128, 255]
+    integers: [int32_min, int32_max, uint16_max, uint32_max]
+    floats: [negative_zero, nan, positive_inf, negative_inf, max_valid, next_invalid]
+    time: [zero, period_20ms, uint32_wrap, max_period]
+    joints: [each_axis_independent, mixed_signs, all_axes]
+
+  platform:
+    uart_dma:
+      - repeated_position_256
+      - wrap_256_to_1
+      - unchanged_position
+      - backward_position
+      - frame_split_at_every_byte
+      - multiple_frames_per_callback
+      - software_ring_overflow
+    fdcan:
+      - id_and_dlc_boundaries
+      - tx_fifo_full_until_timeout
+      - hal_tx_failure
+      - rx_burst_queue_full
+      - per_axis_tx_failure_matrix
+      - synchronous_broadcast_failure
+
+waves:
+  - id: W0
+    name: archive_existing_verified_fixes
+    defects: [K-UART-01, K-LOCK-01, K-LOCK-02, K-TEST-01, K-TOOL-01]
+  - id: W1
+    name: fault_taxonomy
+    defects: [K-FAULT-01]
+  - id: W2
+    name: rtos_and_task_error_propagation
+    defects: [K-MOTOR-01, K-HOST-01, K-EVENT-01, K-EVENT-02, K-MOTION-01]
+  - id: W3
+    name: service_atomic_semantics
+    defects: [K-SVC-01, K-TEACH-01]
+  - id: W4
+    name: feedback_freshness
+    defects: [K-FEEDBACK-01, K-FEEDBACK-02]
+  - id: W5
+    name: state_and_motion_lifecycle
+    defects: [K-STATE-01, K-STATE-02]
+  - id: W6
+    name: teach_final_sample
+    defects: [K-TEACH-02, K-TEACH-03]
+  - id: W7
+    name: startup_and_recovery
+    defects: [K-START-01, K-RECOVERY-01]
+  - id: W8
+    name: versioned_protocol
+    defects: [K-PARSER-01, K-PROTO-01, K-PROTO-02, K-PROTO-03]
+    requires_protocol_approval: true
+  - id: W9
+    name: measured_optimization
+    requires_correctness_waves: [W0, W1, W2, W3, W4, W5, W6, W7]
+  - id: W10
+    name: mechanical_acceptance
+    defects:
+      - H-ADDR-01
+      - H-DIR-01
+      - H-CAL-01
+      - H-CAN-01
+      - H-TEACH-01
+      - H-REENABLE-01
+      - H-LIMIT-01
+      - H-HOME-01
+    requires_physical_gate: true
+
+per_defect_gate:
+  - failing_or_missing_test_evidence
+  - minimal_fix
+  - focused_test
+  - all_host_tests
+  - strict_asan_ubsan
+  - compiler_warning_matrix
+  - stm32_debug
+  - stm32_release_when_applicable
+  - diff_check_and_review
+  - flash_verify_when_firmware_changed
+  - readonly_board_test_when_hardware_relevant
+  - stage_current_defect_only
+  - cached_diff_review
+  - one_atomic_commit
+  - issue_register_update
+
+optimization_metrics:
+  - ram_bytes
+  - flash_bytes
+  - host_test_runtime
+  - motion_period_p50_p95_p99_max
+  - task_stack_high_water
+  - uart_actual_hz_crc_timeout_overflow
+  - can_peak_utilization_drop_and_latency
+  - queue_high_water_and_rejection_count
+  - soak_memory_trend
+
+completion:
+  software:
+    - all_non_hardware_known_items_concluded
+    - every_fixed_item_has_regression_and_commit
+    - fuzz_state_model_and_fault_injection_pass
+    - debug_release_compiler_and_sanitizer_matrix_pass
+    - all_buffers_and_loops_bounded
+    - no_critical_return_value_silenced
+    - readonly_board_soak_passes_with_command_audit
+  hardware:
+    - addresses_directions_zero_ratios_limits
+    - single_axis_then_six_axis
+    - telemetry_can_load
+    - teach_with_support
+    - limits_and_homing
