@@ -7,9 +7,27 @@
 #include "robot_types.h"
 
 enum {
-    ROBOT_FAULT_NONE         = 0U,
-    ROBOT_FAULT_TARGET_RANGE = 1U << 0,
-    ROBOT_FAULT_HOST_TX      = 1U << 1
+    ROBOT_FAULT_NONE             = 0U,
+    /* Compatibility: the first two bits are part of the current V1 state. */
+    ROBOT_FAULT_TARGET_RANGE     = 1U << 0,
+    ROBOT_FAULT_HOST_TX          = 1U << 1,
+    /* RTOS lock/state invariant or other non-motor internal failure. */
+    ROBOT_FAULT_INTERNAL_STATE   = 1U << 2,
+    /* A motor command or the final synchronize broadcast was not queued. */
+    ROBOT_FAULT_MOTOR_TX         = 1U << 3,
+    /* Motor feedback was malformed or could not be converted. */
+    ROBOT_FAULT_MOTOR_FEEDBACK   = 1U << 4,
+    /* UART software RX stream dropped at least one byte. */
+    ROBOT_FAULT_UART_RX_OVERFLOW = 1U << 5,
+    /* A valid CAN RX frame could not reach MotorTask. */
+    ROBOT_FAULT_CAN_RX_DROP      = 1U << 6,
+    /* A multi-axis service touched only a subset of its requested axes. */
+    ROBOT_FAULT_SERVICE_PARTIAL  = 1U << 7,
+    /* Required joint feedback exceeded its freshness threshold. */
+    ROBOT_FAULT_FEEDBACK_STALE   = 1U << 8,
+    /* Application resource, task, peripheral or startup transition failed. */
+    ROBOT_FAULT_STARTUP          = 1U << 9,
+    ROBOT_FAULT_ALL_KNOWN        = (1U << 10) - 1U
 };
 
 bool robot_state_init(osMutexId_t state_mutex);

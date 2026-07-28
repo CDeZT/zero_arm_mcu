@@ -102,6 +102,46 @@ static void test_fault_management(void)
     assert(state.run_state == ROBOT_STATE_READY);
 }
 
+static void test_fault_taxonomy_is_unique_and_compatible(void)
+{
+    static const uint32_t faults[] = {
+        ROBOT_FAULT_TARGET_RANGE,
+        ROBOT_FAULT_HOST_TX,
+        ROBOT_FAULT_INTERNAL_STATE,
+        ROBOT_FAULT_MOTOR_TX,
+        ROBOT_FAULT_MOTOR_FEEDBACK,
+        ROBOT_FAULT_UART_RX_OVERFLOW,
+        ROBOT_FAULT_CAN_RX_DROP,
+        ROBOT_FAULT_SERVICE_PARTIAL,
+        ROBOT_FAULT_FEEDBACK_STALE,
+        ROBOT_FAULT_STARTUP
+    };
+
+    assert(ROBOT_FAULT_TARGET_RANGE == (1U << 0));
+    assert(ROBOT_FAULT_HOST_TX == (1U << 1));
+
+    uint32_t combined = ROBOT_FAULT_NONE;
+    for (size_t index = 0U;
+         index < sizeof(faults) / sizeof(faults[0]);
+         index++) {
+        assert(faults[index] != 0U);
+        assert((faults[index] &
+                (faults[index] - 1U)) == 0U);
+        assert((combined & faults[index]) == 0U);
+        combined |= faults[index];
+    }
+    assert(combined == ROBOT_FAULT_ALL_KNOWN);
+
+    reset_fakes();
+    assert(robot_state_init(TEST_MUTEX));
+    assert(robot_set_fault(combined));
+
+    robot_state_t state;
+    assert(robot_get_state(&state));
+    assert(state.fault_flags == ROBOT_FAULT_ALL_KNOWN);
+    assert(state.run_state == ROBOT_STATE_FAULT);
+}
+
 static void test_clear_fault_preserves_non_fault_state(void)
 {
     reset_fakes();
@@ -213,6 +253,7 @@ int main(void)
     test_state_init_and_validation();
     test_all_mask_functions();
     test_fault_management();
+    test_fault_taxonomy_is_unique_and_compatible();
     test_clear_fault_preserves_non_fault_state();
     test_run_state_boundaries();
     test_actual_joint_boundaries();

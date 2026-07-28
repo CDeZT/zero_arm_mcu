@@ -40,6 +40,28 @@ static bool s_initialized;
 static uint32_t s_motor_can_errors;
 static uint32_t s_motor_feedback_faults;
 
+static void motor_record_fault(uint32_t fault)
+{
+    (void)robot_set_fault(fault);
+}
+
+static void motor_record_internal_error(void)
+{
+    motor_record_fault(ROBOT_FAULT_INTERNAL_STATE);
+}
+
+static void motor_record_tx_error(void)
+{
+    s_motor_can_errors++;
+    motor_record_fault(ROBOT_FAULT_MOTOR_TX);
+}
+
+static void motor_record_feedback_error(uint32_t fault)
+{
+    s_motor_feedback_faults++;
+    motor_record_fault(fault);
+}
+
 static bool motor_lock_target(void)
 {
     return osMutexAcquire(
@@ -131,7 +153,7 @@ static void motor_enable_one(uint8_t motor_id)
             motor_id,
             true,
             false)) {
-        s_motor_can_errors++;
+        motor_record_tx_error();
     }
 }
 
@@ -141,7 +163,7 @@ static void motor_disable_one(uint8_t motor_id)
             motor_id,
             false,
             false)) {
-        s_motor_can_errors++;
+        motor_record_tx_error();
     }
 }
 
@@ -150,7 +172,7 @@ static void motor_stop_one(uint8_t motor_id)
     if (!X_V2_Stop_Now(
             motor_id,
             false)) {
-        s_motor_can_errors++;
+        motor_record_tx_error();
     }
 }
 
@@ -160,7 +182,7 @@ static void motor_teach_start_one(uint8_t motor_id)
             motor_id,
             S_CPOS,
             MOTION_PERIOD_MS)) {
-        s_motor_can_errors++;
+        motor_record_tx_error();
     }
     motor_disable_one(motor_id);
 }
@@ -171,7 +193,7 @@ static void motor_teach_stop_one(uint8_t motor_id)
             motor_id,
             S_CPOS,
             0U)) {
-        s_motor_can_errors++;
+        motor_record_tx_error();
     }
 }
 
@@ -220,8 +242,11 @@ bool motor_manager_submit_target(
 {
     if (!s_initialized ||
         target == NULL ||
-        !robot_has_active_target() ||
-        !motor_lock_target()) {
+        !robot_has_active_target()) {
+        return false;
+    }
+    if (!motor_lock_target()) {
+        motor_record_internal_error();
         return false;
     }
 
@@ -229,6 +254,7 @@ bool motor_manager_submit_target(
     s_motor_target_valid = true;
 
     if (!motor_unlock_target()) {
+        motor_record_internal_error();
         return false;
     }
 
@@ -242,8 +268,11 @@ bool motor_manager_get_latest_target(
     motor_target_snapshot_t *target)
 {
     if (!s_initialized ||
-        target == NULL ||
-        !motor_lock_target()) {
+        target == NULL) {
+        return false;
+    }
+    if (!motor_lock_target()) {
+        motor_record_internal_error();
         return false;
     }
 
@@ -253,6 +282,7 @@ bool motor_manager_get_latest_target(
     }
 
     if (!motor_unlock_target()) {
+        motor_record_internal_error();
         return false;
     }
     return valid;
@@ -273,6 +303,7 @@ bool motor_manager_send_latest_target(void)
         const joint_config_t *config =
             joint_config_get(joint);
         if (config == NULL) {
+            motor_record_internal_error();
             return false;
         }
 
@@ -304,34 +335,52 @@ bool motor_manager_send_latest_target(void)
                 position_degrees,
                 MOTOR_POSITION_ABSOLUTE_MODE,
                 true)) {
+            motor_record_tx_error();
             return false;
         }
     }
 
-    return X_V2_Synchronous_motion(
-        MOTOR_SYNC_BROADCAST_ADDRESS);
+    if (!X_V2_Synchronous_motion(
+            MOTOR_SYNC_BROADCAST_ADDRESS)) {
+        motor_record_tx_error();
+        return false;
+    }
+    return true;
 }
 
 bool motor_discard_pending_target(void)
 {
     if (!s_initialized ||
-        !motor_lock_target()) {
+        s_motor_target_mutex == NULL) {
+        return false;
+    }
+    if (!motor_lock_target()) {
+        motor_record_internal_error();
         return false;
     }
 
     s_motor_target_valid = false;
-    return motor_unlock_target();
+    if (!motor_unlock_target()) {
+        motor_record_internal_error();
+        return false;
+    }
+    return true;
 }
 
 bool motor_has_valid_target(void)
 {
     if (!s_initialized ||
-        !motor_lock_target()) {
+        s_motor_target_mutex == NULL) {
+        return false;
+    }
+    if (!motor_lock_target()) {
+        motor_record_internal_error();
         return false;
     }
 
     bool valid = s_motor_target_valid;
     if (!motor_unlock_target()) {
+        motor_record_internal_error();
         return false;
     }
     return valid;
@@ -377,7 +426,7 @@ bool motor_process_all_services(void)
                 service.joint_mask);
             if (!motor_discard_pending_target()) {
                 (void)robot_set_fault(
-                    ROBOT_FAULT_TARGET_RANGE);
+                    ROBOT_FAULT_INTERNAL_STATE);
             }
             stop_processed = true;
             break;
@@ -399,19 +448,19 @@ bool motor_process_all_services(void)
                 service.joint_mask);
             if (!motor_discard_pending_target()) {
                 (void)robot_set_fault(
-                    ROBOT_FAULT_TARGET_RANGE);
+                    ROBOT_FAULT_INTERNAL_STATE);
             }
             motor_for_each_masked_joint(
                 service.joint_mask,
                 motor_teach_start_one);
             if (!robot_invalidate_motion_target()) {
                 (void)robot_set_fault(
-                    ROBOT_FAULT_TARGET_RANGE);
+                    ROBOT_FAULT_INTERNAL_STATE);
             }
             if (!robot_set_run_state(
                     ROBOT_STATE_TEACHING)) {
                 (void)robot_set_fault(
-                    ROBOT_FAULT_TARGET_RANGE);
+                    ROBOT_FAULT_INTERNAL_STATE);
             }
             break;
 
@@ -425,7 +474,7 @@ bool motor_process_all_services(void)
                     ROBOT_STATE_READY);
             } else {
                 (void)robot_set_fault(
-                    ROBOT_FAULT_TARGET_RANGE);
+                    ROBOT_FAULT_INTERNAL_STATE);
             }
             break;
 
@@ -531,8 +580,12 @@ bool motor_manager_on_can_frame(
             if (!robot_set_actual_joint(
                     joint,
                     joint_urad)) {
-                s_motor_feedback_faults++;
+                motor_record_feedback_error(
+                    ROBOT_FAULT_INTERNAL_STATE);
             }
+        } else {
+            motor_record_feedback_error(
+                ROBOT_FAULT_MOTOR_FEEDBACK);
         }
         break;
     }

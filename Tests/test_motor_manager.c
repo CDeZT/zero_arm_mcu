@@ -79,6 +79,7 @@ static osStatus_t s_mutex_release_status;
 static uint32_t s_mutex_acquire_count;
 static uint32_t s_mutex_release_count;
 static uint32_t s_event_flags;
+static uint32_t s_robot_fault_flags;
 
 static can_frame_t make_frame(
     uint8_t motor_id,
@@ -112,6 +113,7 @@ static void reset_fakes(void)
     s_mutex_acquire_count = 0U;
     s_mutex_release_count = 0U;
     s_event_flags = 0U;
+    s_robot_fault_flags = ROBOT_FAULT_NONE;
 }
 
 bool robot_has_active_target(void)
@@ -155,7 +157,7 @@ bool robot_set_actual_joint(
 
 bool robot_set_fault(uint32_t fault_flags)
 {
-    (void)fault_flags;
+    s_robot_fault_flags |= fault_flags;
     return true;
 }
 
@@ -355,10 +357,14 @@ static void test_init_and_target_snapshot(void)
 
     s_mutex_release_status = osErrorResource;
     assert(!motor_discard_pending_target());
+    assert((s_robot_fault_flags &
+            ROBOT_FAULT_INTERNAL_STATE) != 0U);
     s_mutex_release_status = osOK;
 
     s_mutex_acquire_status = osErrorResource;
     assert(!motor_manager_submit_target(&input));
+    assert((s_robot_fault_flags &
+            ROBOT_FAULT_INTERNAL_STATE) != 0U);
     assert(!motor_has_valid_target());
 }
 
@@ -597,6 +603,9 @@ static void test_position_failure_suppresses_synchronize(void)
     s_x_failure_call = 2;
     assert(!motor_manager_send_latest_target());
     assert(s_x_call_count == 3U);
+    assert(motor_manager_can_error_count() == 1U);
+    assert((s_robot_fault_flags &
+            ROBOT_FAULT_MOTOR_TX) != 0U);
 
     for (uint8_t call = 0U;
          call < s_x_call_count;
@@ -863,6 +872,8 @@ static void test_can_error_counter_tracks_failures(void)
 
     (void)motor_process_all_services();
     assert(motor_manager_can_error_count() == 1U);
+    assert((s_robot_fault_flags &
+            ROBOT_FAULT_MOTOR_TX) != 0U);
 
     s_x_failure_call = -1;
     s_service_index = 0U;
