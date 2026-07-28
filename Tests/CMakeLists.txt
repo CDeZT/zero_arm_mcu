@@ -105,6 +105,30 @@ add_test(
     COMMAND test_platform_uart
 )
 
+add_executable(test_app_rtos
+    test_app_rtos.c
+    Stubs/cmsis_os2.h
+    ../App/Inc/app_rtos.h
+    ../Config/app_events.h
+)
+
+target_include_directories(test_app_rtos PRIVATE
+    Stubs
+    ../App/Inc
+    ../Config
+)
+
+target_compile_options(test_app_rtos PRIVATE
+    -Wall
+    -Wextra
+    -Werror
+)
+
+add_test(
+    NAME test_app_rtos
+    COMMAND test_app_rtos
+)
+
 add_executable(test_motor_manager
     test_motor_manager.c
     Stubs/cmsis_os2.h

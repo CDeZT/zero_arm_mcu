@@ -7,6 +7,12 @@ typedef void *osEventFlagsId_t;
 typedef void *osMutexId_t;
 
 #define osWaitForever 0xFFFFFFFFU
+#define osFlagsError          0x80000000U
+#define osFlagsErrorUnknown   0xFFFFFFFFU
+#define osFlagsErrorTimeout   0xFFFFFFFEU
+#define osFlagsErrorResource  0xFFFFFFFDU
+#define osFlagsErrorParameter 0xFFFFFFFCU
+#define osFlagsErrorISR       0xFFFFFFFAU
 
 typedef enum {
     osOK = 0,

@@ -2,6 +2,7 @@
 #include "app_internal.h"
 
 #include "app_events.h"
+#include "app_rtos.h"
 #include "build_config.h"
 #include "messages.h"
 #include "motion.h"
@@ -74,6 +75,13 @@ void HostTask(void *argument)
             osFlagsWaitAny,
             osWaitForever);
 
+        if (app_rtos_event_wait_failed(events)) {
+            (void)robot_set_fault(
+                ROBOT_FAULT_INTERNAL_STATE);
+            (void)osDelay(1U);
+            continue;
+        }
+
         if ((events & HOST_EVENT_RX) != 0U) {
             uint8_t byte;
 
@@ -105,6 +113,13 @@ void MotorTask(void *argument)
             MOTOR_EVENT_TARGET,
             osFlagsWaitAny,
             osWaitForever);
+
+        if (app_rtos_event_wait_failed(events)) {
+            (void)robot_set_fault(
+                ROBOT_FAULT_INTERNAL_STATE);
+            (void)osDelay(1U);
+            continue;
+        }
 
         /* Re-check services before feedback on every bounded drain cycle. */
         bool stop_processed = false;
