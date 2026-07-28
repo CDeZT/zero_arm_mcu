@@ -1,0 +1,177 @@
+handoff:
+  schema: zeroarm-mcu-handoff/v2
+  updated: "2026-07-28"
+  repository: "C:\\Users\\Administrator\\CLionProjects\\zero_arm_mcu"
+  branch: main
+  next_defect: K-HOST-01
+
+documents:
+  start: START_HERE.md
+  narrative: ZEROARM_MCU_HANDOFF_V2.md
+  agent_instructions: ZEROARM_MCU_AGENT_INSTRUCTIONS_V2.md
+  master_plan: ../../docx/Reference_plan/ZEROARM_MCU_AUDIT_REMEDIATION_MASTER_PLAN_V2.md
+  audit_matrix: ../../docx/Reference_plan/ZEROARM_MCU_AUDIT_MATRIX_V2.yaml
+  design: ../../docx/Reference_plan/ZEROARM_MCU_FIRMWARE_DESIGN_V1.md
+  code_reference: ../../docx/Reference_plan/ZEROARM_MCU_FIRMWARE_CODE_REFERENCE_V1.md
+
+baseline:
+  host_tests:
+    total: 17
+    passed: 17
+  sanitizers:
+    address: pass
+    undefined: pass
+    tests: 17
+    strict_no_recover: true
+  stm32:
+    debug:
+      status: pass
+      ram_bytes: 22976
+      flash_bytes: 54716
+      elf: build/Debug/zero_arm_mcu.elf
+    release:
+      status: pass
+      ram_bytes: 22968
+      flash_bytes: 30928
+      elf: build/Release/zero_arm_mcu.elf
+  board_latest_firmware_verified: false
+  mechanical_commands_sent_during_remediation: []
+
+completed:
+  - id: K-PROTO-BUILD-01
+    commit: 653b994
+  - id: K-TRAJ-01
+    commit: ebb271c
+  - id: K-XV2-NUM-01
+    commit: 1422e69
+  - id: K-UART-01
+    commit: 3a41a34
+  - id: K-LOCK-01
+    commit: b763648
+  - id: K-LOCK-02
+    commit: 0e7e40d
+  - id: K-TEST-01
+    commit: d4984ae
+  - id: K-TOOL-01
+    commit: d4984ae
+  - id: K-FAULT-01
+    commit: d01d725
+  - id: K-EVENT-02
+    commit: 4821201
+
+pending:
+  W2:
+    - K-HOST-01
+    - K-EVENT-01
+    - K-MOTOR-01
+    - K-MOTION-01
+  W3:
+    - K-SVC-01
+    - K-TEACH-01
+  W4:
+    - K-FEEDBACK-01
+    - K-FEEDBACK-02
+  W5:
+    - K-STATE-01
+    - K-STATE-02
+  W6:
+    - K-TEACH-02
+    - K-TEACH-03
+  W7:
+    - K-START-01
+    - K-RECOVERY-01
+  W8:
+    - K-PARSER-01
+    - K-PROTO-01
+    - K-PROTO-02
+    - K-PROTO-03
+  W9:
+    - strict_compiler_matrix
+    - static_analysis
+    - protocol_fuzz
+    - state_reference_model
+    - rtos_fault_injection
+    - uart_fdcan_burst
+    - soak_and_resource_metrics
+
+hardware_blocked:
+  - H-ADDR-01
+  - H-DIR-01
+  - H-CAL-01
+  - H-CAN-01
+  - H-TEACH-01
+  - H-REENABLE-01
+  - H-LIMIT-01
+  - H-HOME-01
+
+working_tree_preserve:
+  - path: .idea/editor.xml
+    state: modified
+    action: do_not_stage
+  - path: AGENTS.md
+    state: deleted
+    action: do_not_restore_or_stage_without_user_request
+  - path: KNOWN_ISSUES.md
+    state: modified_mixed_history
+    action: review_and_split_before_stage
+  - path: Tests/test_hardware_readonly.ps1
+    state: untracked
+    action: audit_command_whitelist_before_commit
+  - path: tmp/
+    state: untracked
+    action: do_not_stage
+
+board:
+  programmer: STM32CubeProgrammer_2.23.0
+  stlink:
+    version: V2J46M31
+    serial: 066CFF494986485067181236
+    voltage_v: 3.27
+  target:
+    device_id: "0x469"
+    family: STM32G47x_G48x_G414
+  vcp: COM3
+  observations:
+    - normal_and_under_reset_report_target_held_under_reset
+    - hotplug_connects
+    - hotplug_sector_erase_failed
+    - option_bytes_reported_rdp_level_1
+    - rdp_was_not_modified
+    - core_was_resumed_after_diagnostics
+    - hello_currently_times_out
+  recovery_order:
+    - inspect_reset_button
+    - measure_nrst
+    - disconnect_or_correct_stlink_nrst_if_held_low
+    - repeat_connection_and_option_byte_read
+    - only_then_decide_rdp_level_change
+    - flash_verify_reset
+    - readonly_serial_test
+
+safety:
+  readonly_allowed:
+    - HELLO
+    - GET_STATE
+    - malformed_readonly_frame_recovery
+  firmware_allowed_after_target_recovery:
+    - flash
+    - verify
+    - reset
+  prohibited_until_mechanical_gate:
+    - SET_JOINT_TARGET
+    - ENABLE
+    - DISABLE
+    - STOP
+    - HOME
+    - TEACH_START
+    - TEACH_STOP
+
+git:
+  one_defect_one_atomic_commit: true
+  stage_current_scope_only: true
+  auto_push: false
+  forbidden_cleanup:
+    - reset_hard
+    - checkout_discard
+    - clean
+    - delete_unowned_changes
