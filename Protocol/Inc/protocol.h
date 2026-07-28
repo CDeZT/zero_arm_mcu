@@ -27,6 +27,11 @@ void protocol_init(protocol_frame_handler_t handler);
 
 void protocol_parse_byte(uint8_t byte);
 
+/*
+ * For valid input, output must have room for payload_length + 5 bytes;
+ * PROTO_TX_BUF_SIZE bytes are sufficient for every accepted frame.
+ * payload may be NULL only when payload_length is zero.
+ */
 bool protocol_build_frame(uint8_t command,
                           const uint8_t *payload,
                           uint8_t payload_length,

@@ -138,27 +138,29 @@ bool protocol_build_frame(uint8_t command,
                           uint8_t *output,
                           uint16_t *output_length)
 {
-    if (output == NULL || output_length == NULL) {
+    if (output == NULL ||
+        output_length == NULL ||
+        (payload == NULL && payload_length > 0U)) {
         return false;
     }
 
-    uint8_t total_len = 1U + payload_length;
+    uint16_t total_len = 1U + (uint16_t)payload_length;
 
     if ((total_len + 4U) > PROTO_TX_BUF_SIZE) {
         return false;
     }
 
-    uint8_t idx = 0U;
+    uint16_t idx = 0U;
     output[idx++] = PROTO_STX;
-    output[idx++] = total_len;
+    output[idx++] = (uint8_t)total_len;
     output[idx++] = command;
 
-    if (payload != NULL && payload_length > 0U) {
+    if (payload_length > 0U) {
         memcpy(&output[idx], payload, payload_length);
         idx += payload_length;
     }
 
-    uint8_t crc = crc8_calc(&output[2], total_len);
+    uint8_t crc = crc8_calc(&output[2], (uint8_t)total_len);
     output[idx++] = crc;
     output[idx++] = PROTO_ETX;
 

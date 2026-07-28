@@ -157,13 +157,53 @@ static void test_minimal_command_frame(void)
 static void test_build_frame_boundaries(void)
 {
     uint8_t frame[PROTO_TX_BUF_SIZE + 8U];
-    uint16_t frame_len;
+    uint16_t frame_len = 0U;
     uint8_t big_payload[PROTO_TX_BUF_SIZE];
+    uint8_t max_payload[PROTO_TX_BUF_SIZE - 5U];
+    uint8_t overflow_payload[PROTO_TX_BUF_SIZE - 4U];
+    uint8_t wrap_payload[UINT8_MAX];
+    uint8_t wrap_frame[UINT8_MAX + 5U];
 
     memset(big_payload, 0x42U, sizeof(big_payload));
+    memset(max_payload, 0x5AU, sizeof(max_payload));
+    memset(overflow_payload, 0xA5U, sizeof(overflow_payload));
+    memset(wrap_payload, 0xC3U, sizeof(wrap_payload));
+    memset(wrap_frame, 0x7EU, sizeof(wrap_frame));
+
+    assert(protocol_build_frame(
+        0x05U, max_payload, sizeof(max_payload),
+        frame, &frame_len));
+    assert(frame_len == PROTO_TX_BUF_SIZE);
+
+    memset(frame, 0x7EU, sizeof(frame));
+    frame_len = 0xBEEFU;
+    assert(!protocol_build_frame(
+        0x05U, overflow_payload, sizeof(overflow_payload),
+        frame, &frame_len));
+    assert(frame_len == 0xBEEFU);
+    assert(frame[0] == 0x7EU);
+
+    memset(frame, 0x7EU, sizeof(frame));
+    frame_len = 0xBEEFU;
     assert(!protocol_build_frame(
         0x00U, big_payload, sizeof(big_payload),
         frame, &frame_len));
+    assert(frame_len == 0xBEEFU);
+    assert(frame[0] == 0x7EU);
+
+    frame_len = 0xBEEFU;
+    assert(!protocol_build_frame(
+        0x00U, wrap_payload, UINT8_MAX,
+        wrap_frame, &frame_len));
+    assert(frame_len == 0xBEEFU);
+    assert(wrap_frame[0] == 0x7EU);
+
+    frame_len = 0xBEEFU;
+    memset(frame, 0x7EU, sizeof(frame));
+    assert(!protocol_build_frame(
+        0x00U, NULL, 1U, frame, &frame_len));
+    assert(frame_len == 0xBEEFU);
+    assert(frame[0] == 0x7EU);
 
     assert(!protocol_build_frame(0x00U, NULL, 0U, NULL, &frame_len));
     assert(!protocol_build_frame(0x00U, NULL, 0U, frame, NULL));
