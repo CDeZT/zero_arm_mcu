@@ -20,7 +20,7 @@ bool motor_manager_get_latest_target(
 
 bool motor_manager_send_latest_target(void);
 
-void motor_discard_pending_target(void);
+bool motor_discard_pending_target(void);
 bool motor_has_valid_target(void);
 
 void motor_manager_enable_mask(

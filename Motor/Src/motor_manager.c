@@ -312,15 +312,15 @@ bool motor_manager_send_latest_target(void)
         MOTOR_SYNC_BROADCAST_ADDRESS);
 }
 
-void motor_discard_pending_target(void)
+bool motor_discard_pending_target(void)
 {
     if (!s_initialized ||
         !motor_lock_target()) {
-        return;
+        return false;
     }
 
     s_motor_target_valid = false;
-    (void)motor_unlock_target();
+    return motor_unlock_target();
 }
 
 bool motor_has_valid_target(void)
@@ -375,7 +375,10 @@ bool motor_process_all_services(void)
         case ROBOT_SERVICE_STOP:
             motor_manager_stop_mask(
                 service.joint_mask);
-            motor_discard_pending_target();
+            if (!motor_discard_pending_target()) {
+                (void)robot_set_fault(
+                    ROBOT_FAULT_TARGET_RANGE);
+            }
             stop_processed = true;
             break;
 
@@ -394,7 +397,10 @@ bool motor_process_all_services(void)
         case ROBOT_SERVICE_TEACH_START:
             motor_manager_stop_mask(
                 service.joint_mask);
-            motor_discard_pending_target();
+            if (!motor_discard_pending_target()) {
+                (void)robot_set_fault(
+                    ROBOT_FAULT_TARGET_RANGE);
+            }
             motor_for_each_masked_joint(
                 service.joint_mask,
                 motor_teach_start_one);

@@ -350,8 +350,12 @@ static void test_init_and_target_snapshot(void)
     assert(motor_manager_get_latest_target(&output));
     assert(memcmp(&input, &output, sizeof(input)) == 0);
 
-    motor_discard_pending_target();
+    assert(motor_discard_pending_target());
     assert(!motor_has_valid_target());
+
+    s_mutex_release_status = osErrorResource;
+    assert(!motor_discard_pending_target());
+    s_mutex_release_status = osOK;
 
     s_mutex_acquire_status = osErrorResource;
     assert(!motor_manager_submit_target(&input));

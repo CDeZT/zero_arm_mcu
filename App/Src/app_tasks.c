@@ -158,7 +158,7 @@ void MotionTask(void *argument)
                 trajectory_ready = true;
             } else {
                 trajectory_stop();
-                motor_discard_pending_target();
+                (void)motor_discard_pending_target();
                 trajectory_ready = false;
                 (void)robot_set_fault(
                     ROBOT_FAULT_TARGET_RANGE);
