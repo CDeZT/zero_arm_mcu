@@ -7,6 +7,8 @@
 #define UART_RX_STREAM_SIZE         512U
 
 #define HOST_TX_QUEUE_DEPTH         8U
+#define HOST_TASK_POLL_MS           20U
+#define HOST_TX_MAX_START_ATTEMPTS  3U
 #define CAN_RX_QUEUE_DEPTH          16U
 #define ROBOT_SERVICE_QUEUE_DEPTH   8U
 

@@ -25,17 +25,26 @@ static bool messages_queue_frame(const uint8_t *frame, uint16_t length)
     item.length = length;
     memcpy(item.data, frame, length);
 
-    if (osMessageQueuePut(
+    osStatus_t queue_status = osMessageQueuePut(
             s_host_tx_queue,
             &item,
             0U,
-            0U) != osOK) {
+            0U);
+    if (queue_status != osOK) {
+        (void)robot_set_fault(
+            queue_status == osErrorResource ?
+                ROBOT_FAULT_HOST_TX :
+                ROBOT_FAULT_INTERNAL_STATE);
         return false;
     }
 
-    osEventFlagsSet(
+    uint32_t event_result = osEventFlagsSet(
         s_host_events,
         HOST_EVENT_TX_PENDING);
+    if ((event_result & osFlagsError) != 0U) {
+        (void)robot_set_fault(
+            ROBOT_FAULT_INTERNAL_STATE);
+    }
     return true;
 }
 

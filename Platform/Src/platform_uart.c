@@ -20,6 +20,8 @@ static uint16_t g_uart_rx_last_position;
 
 static uint8_t g_rx_stream_buffer[UART_RX_STREAM_SIZE];
 static byte_ring_t g_uart_rx_stream;
+static volatile uint32_t g_uart_event_errors;
+static volatile uint32_t g_uart_tx_completions;
 
 static void byte_ring_init(byte_ring_t *ring,
                            uint8_t *buffer,
@@ -89,6 +91,16 @@ uint16_t platform_uart_rx_overflows(void)
     return g_uart_rx_stream.overflows;
 }
 
+uint32_t platform_uart_event_error_count(void)
+{
+    return g_uart_event_errors;
+}
+
+uint32_t platform_uart_tx_completion_count(void)
+{
+    return g_uart_tx_completions;
+}
+
 bool platform_uart_init(osEventFlagsId_t host_events)
 {
     if (host_events == NULL) {
@@ -96,6 +108,8 @@ bool platform_uart_init(osEventFlagsId_t host_events)
     }
 
     s_host_events = host_events;
+    g_uart_event_errors = 0U;
+    g_uart_tx_completions = 0U;
     return true;
 }
 
@@ -152,9 +166,11 @@ void platform_uart_on_rx_position(uint16_t position)
      */
     g_uart_rx_last_position = position;
 
-    osEventFlagsSet(
-        s_host_events,
-        HOST_EVENT_RX);
+    if ((osEventFlagsSet(
+             s_host_events,
+             HOST_EVENT_RX) & osFlagsError) != 0U) {
+        g_uart_event_errors++;
+    }
 }
 
 bool platform_uart_read_byte(uint8_t *output)
@@ -173,6 +189,16 @@ bool platform_uart_start_tx(const uint8_t *data, uint16_t length)
         length) == HAL_OK;
 }
 
+void platform_uart_on_tx_complete(void)
+{
+    g_uart_tx_completions++;
+    if ((osEventFlagsSet(
+             s_host_events,
+             HOST_EVENT_TX_DONE) & osFlagsError) != 0U) {
+        g_uart_event_errors++;
+    }
+}
+
 void HAL_UARTEx_RxEventCallback(
     UART_HandleTypeDef *huart,
     uint16_t position)
@@ -185,8 +211,6 @@ void HAL_UARTEx_RxEventCallback(
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART1) {
-        osEventFlagsSet(
-            s_host_events,
-            HOST_EVENT_TX_DONE);
+        platform_uart_on_tx_complete();
     }
 }

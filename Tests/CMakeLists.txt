@@ -129,6 +129,33 @@ add_test(
     COMMAND test_app_rtos
 )
 
+add_executable(test_app_host_tx
+    test_app_host_tx.c
+    Stubs/cmsis_os2.h
+    ../App/Inc/app_host_tx.h
+    ../App/Src/app_host_tx.c
+)
+
+target_include_directories(test_app_host_tx PRIVATE
+    Stubs
+    ../App/Inc
+    ../Config
+    ../Platform/Inc
+    ../Protocol/Inc
+    ../Robot/Inc
+)
+
+target_compile_options(test_app_host_tx PRIVATE
+    -Wall
+    -Wextra
+    -Werror
+)
+
+add_test(
+    NAME test_app_host_tx
+    COMMAND test_app_host_tx
+)
+
 add_executable(test_motor_manager
     test_motor_manager.c
     Stubs/cmsis_os2.h

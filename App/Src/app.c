@@ -1,6 +1,7 @@
 #include "app.h"
 #include "app_internal.h"
 #include "app_tasks.h"
+#include "app_host_tx.h"
 
 #include "build_config.h"
 #include "messages.h"
@@ -78,6 +79,10 @@ bool app_start(void)
     if (!messages_init(
             g_host_tx_queue,
             g_host_events)) {
+        return false;
+    }
+
+    if (!app_host_tx_init(g_host_tx_queue)) {
         return false;
     }
 

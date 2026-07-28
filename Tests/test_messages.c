@@ -32,6 +32,8 @@ static host_tx_frame_t s_queued_frame;
 static uint32_t s_queue_put_count;
 static uint32_t s_event_flags;
 static osStatus_t s_queue_put_status;
+static uint32_t s_event_result;
+static uint32_t s_robot_fault_flags;
 
 static robot_call_t s_robot_call;
 static uint8_t s_robot_mask;
@@ -50,6 +52,8 @@ static void reset_fakes(void)
     s_queue_put_count = 0U;
     s_event_flags = 0U;
     s_queue_put_status = osOK;
+    s_event_result = HOST_EVENT_TX_PENDING;
+    s_robot_fault_flags = ROBOT_FAULT_NONE;
     s_robot_call = ROBOT_CALL_NONE;
     s_robot_mask = 0U;
     s_robot_result = ROBOT_OK;
@@ -87,8 +91,16 @@ uint32_t osEventFlagsSet(
     uint32_t flags)
 {
     assert(event_flags_id == TEST_HOST_EVENTS);
-    s_event_flags |= flags;
-    return s_event_flags;
+    if ((s_event_result & osFlagsError) == 0U) {
+        s_event_flags |= flags;
+    }
+    return s_event_result;
+}
+
+bool robot_set_fault(uint32_t fault_flags)
+{
+    s_robot_fault_flags |= fault_flags;
+    return true;
 }
 
 bool robot_get_state(robot_state_t *output)
@@ -198,6 +210,54 @@ static void test_init_validation(void)
     assert(messages_init(
         TEST_HOST_QUEUE,
         TEST_HOST_EVENTS));
+}
+
+static void test_event_set_failure_records_fault(void)
+{
+    static const uint32_t event_errors[] = {
+        osFlagsErrorUnknown,
+        osFlagsErrorTimeout,
+        osFlagsErrorResource,
+        osFlagsErrorParameter,
+        osFlagsErrorISR
+    };
+
+    for (size_t index = 0U;
+         index < sizeof(event_errors) /
+                     sizeof(event_errors[0]);
+         index++) {
+        reset_fakes();
+        s_event_result = event_errors[index];
+        assert(messages_init(
+            TEST_HOST_QUEUE,
+            TEST_HOST_EVENTS));
+
+        messages_on_frame(CMD_HELLO, NULL, 0U);
+
+        assert(s_queue_put_count == 1U);
+        assert(s_event_flags == 0U);
+        assert((s_robot_fault_flags &
+                ROBOT_FAULT_INTERNAL_STATE) != 0U);
+    }
+}
+
+static void test_queue_failure_records_reason(void)
+{
+    reset_fakes();
+    s_queue_put_status = osErrorResource;
+    messages_on_frame(CMD_HELLO, NULL, 0U);
+    assert(s_event_flags == 0U);
+    assert((s_robot_fault_flags &
+            ROBOT_FAULT_HOST_TX) != 0U);
+    assert((s_robot_fault_flags &
+            ROBOT_FAULT_INTERNAL_STATE) == 0U);
+
+    reset_fakes();
+    s_queue_put_status = osErrorParameter;
+    messages_on_frame(CMD_HELLO, NULL, 0U);
+    assert(s_event_flags == 0U);
+    assert((s_robot_fault_flags &
+            ROBOT_FAULT_INTERNAL_STATE) != 0U);
 }
 
 static void test_enable_and_disable(void)
@@ -525,6 +585,8 @@ static void test_set_joint_target_validation(void)
 int main(void)
 {
     test_init_validation();
+    test_event_set_failure_records_fault();
+    test_queue_failure_records_reason();
     test_enable_and_disable();
     test_mask_validation();
     test_stop_validation();

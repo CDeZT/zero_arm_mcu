@@ -68,6 +68,11 @@ bool robot_get_state(robot_state_t *out)
     *out = s_fake_state;
     return true;
 }
+bool robot_set_fault(uint32_t fault_flags)
+{
+    s_fake_state.fault_flags |= fault_flags;
+    return true;
+}
 robot_result_t robot_request_enable(uint8_t m)    { s_last_mask = m; return s_enable_result; }
 robot_result_t robot_request_disable(uint8_t m)   { s_last_mask = m; return s_disable_result; }
 robot_result_t robot_request_stop(void)           { return s_stop_result; }

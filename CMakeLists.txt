@@ -47,8 +47,10 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     App/Inc/app.h
     App/Inc/app_tasks.h
+    App/Inc/app_host_tx.h
     App/Inc/app_rtos.h
     App/Src/app.c
+    App/Src/app_host_tx.c
     App/Src/app_internal.h
     App/Src/app_tasks.c
     Config/joint_config.c

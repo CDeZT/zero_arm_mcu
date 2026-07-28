@@ -1,5 +1,6 @@
 #include "platform_uart.h"
 
+#include "app_events.h"
 #include "build_config.h"
 #include "usart.h"
 
@@ -15,14 +16,17 @@ UART_HandleTypeDef huart1 = {
 static uint8_t *s_dma_buffer;
 static uint16_t s_dma_size;
 static uint32_t s_event_flags;
+static uint32_t s_event_result;
 
 uint32_t osEventFlagsSet(
     osEventFlagsId_t event_flags_id,
     uint32_t flags)
 {
     assert(event_flags_id != NULL);
-    s_event_flags |= flags;
-    return s_event_flags;
+    if ((s_event_result & osFlagsError) == 0U) {
+        s_event_flags |= flags;
+    }
+    return s_event_result;
 }
 
 HAL_StatusTypeDef HAL_UARTEx_ReceiveToIdle_DMA(
@@ -49,6 +53,7 @@ HAL_StatusTypeDef HAL_UART_Transmit_DMA(
 
 static void test_repeated_end_position_does_not_duplicate(void)
 {
+    s_event_result = HOST_EVENT_RX;
     assert(platform_uart_init((osEventFlagsId_t)(uintptr_t)1U));
     assert(platform_uart_start_rx());
     assert(s_dma_buffer != NULL);
@@ -83,9 +88,25 @@ static void test_repeated_end_position_does_not_duplicate(void)
     assert(!platform_uart_read_byte(&byte));
 }
 
+static void test_tx_completion_survives_lost_event(void)
+{
+    s_event_result = osFlagsErrorResource;
+    assert(platform_uart_init(
+        (osEventFlagsId_t)(uintptr_t)1U));
+
+    uint32_t completions =
+        platform_uart_tx_completion_count();
+    platform_uart_on_tx_complete();
+
+    assert(platform_uart_tx_completion_count() ==
+           completions + 1U);
+    assert(platform_uart_event_error_count() == 1U);
+}
+
 int main(void)
 {
     test_repeated_end_position_does_not_duplicate();
+    test_tx_completion_survives_lost_event();
     puts("test_platform_uart: repeated DMA end position handled once");
     return 0;
 }

@@ -1,5 +1,6 @@
 #include "app_tasks.h"
 #include "app_internal.h"
+#include "app_host_tx.h"
 
 #include "app_events.h"
 #include "app_rtos.h"
@@ -35,36 +36,13 @@ const osThreadAttr_t motion_task_attributes = {
     .stack_size = 256U * 4U
 };
 
-static bool s_host_tx_busy;
-static host_tx_frame_t s_host_active_tx;
-
-static void host_try_start_next_tx(void)
-{
-    if (s_host_tx_busy) {
-        return;
-    }
-
-    if (osMessageQueueGet(
-            g_host_tx_queue,
-            &s_host_active_tx,
-            NULL,
-            0U) != osOK) {
-        return;
-    }
-
-    s_host_tx_busy = true;
-
-    if (!platform_uart_start_tx(
-            s_host_active_tx.data,
-            s_host_active_tx.length)) {
-        s_host_tx_busy = false;
-        robot_set_fault(ROBOT_FAULT_HOST_TX);
-    }
-}
-
 void HostTask(void *argument)
 {
     (void)argument;
+    uint16_t observed_rx_overflows =
+        platform_uart_rx_overflows();
+    uint32_t observed_event_errors =
+        platform_uart_event_error_count();
 
     for (;;) {
         uint32_t events = osEventFlagsWait(
@@ -73,31 +51,45 @@ void HostTask(void *argument)
             HOST_EVENT_TX_DONE |
             HOST_EVENT_TX_PENDING,
             osFlagsWaitAny,
-            osWaitForever);
+            HOST_TASK_POLL_MS);
 
         if (app_rtos_event_wait_failed(events)) {
-            (void)robot_set_fault(
-                ROBOT_FAULT_INTERNAL_STATE);
-            (void)osDelay(1U);
-            continue;
+            if (events != osFlagsErrorTimeout) {
+                (void)robot_set_fault(
+                    ROBOT_FAULT_INTERNAL_STATE);
+                (void)osDelay(1U);
+            }
+            events = 0U;
         }
 
-        if ((events & HOST_EVENT_RX) != 0U) {
-            uint8_t byte;
-
-            while (platform_uart_read_byte(&byte)) {
-                protocol_parse_byte(byte);
-            }
+        uint8_t byte;
+        while (platform_uart_read_byte(&byte)) {
+            protocol_parse_byte(byte);
         }
 
         if ((events & HOST_EVENT_TX_DONE) != 0U) {
-            s_host_tx_busy = false;
+            app_host_tx_on_done();
         }
 
-        if ((events & (HOST_EVENT_TX_DONE |
-                       HOST_EVENT_TX_PENDING)) != 0U) {
-            host_try_start_next_tx();
+        uint16_t rx_overflows =
+            platform_uart_rx_overflows();
+        if (rx_overflows != observed_rx_overflows) {
+            observed_rx_overflows = rx_overflows;
+            (void)robot_set_fault(
+                ROBOT_FAULT_UART_RX_OVERFLOW);
         }
+
+        uint32_t event_errors =
+            platform_uart_event_error_count();
+        if (event_errors != observed_event_errors) {
+            observed_event_errors = event_errors;
+            (void)robot_set_fault(
+                ROBOT_FAULT_INTERNAL_STATE);
+        }
+
+        /* Events reduce latency; polling prevents a lost wakeup from
+         * leaving an already queued response permanently stranded. */
+        app_host_tx_process();
     }
 }
 
