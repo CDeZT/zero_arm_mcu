@@ -1,0 +1,374 @@
+manifest:
+  schema: zeroarm-agent-execution/v1
+  purpose: deterministic_handoff_to_delegated_coding_agent
+  authoritative_plan: 05_IMPLEMENTATION_PLAN.md
+  implementation_blueprint: 15_IMPLEMENTATION_BLUEPRINT.md
+  api_contracts: 17_API_DATA_AND_FIXTURE_CONTRACTS.md
+
+entrypoint:
+  working_directory: repository_root
+  one_sentence_prompt: >-
+    严格按照UpperComputer/AGENTS.md、PROJECT_SPEC.yaml和
+    docs/16_AGENT_EXECUTION_MANIFEST.yaml，从IMPLEMENTATION_STATUS.md标记的首个
+    未完成单元开始，完成该单元全部实现、测试、集成、文档和独立Git提交后停止报告，
+    禁止绕过协议审批与机械安全门。
+  algorithm:
+    - read_root_and_nested_agents
+    - read_project_spec_and_implementation_status
+    - locate_first_pending_unit_with_completed_dependencies
+    - read_unit_plan_blueprint_contracts_and_related_specs
+    - inspect_live_environment_source_and_git_status
+    - declare_files_scope_tests_and_hardware_command_boundary
+    - establish_failing_or_missing_test_evidence
+    - implement_and_integrate_without_stubs
+    - execute_all_applicable_quality_gates
+    - update_status_traceability_and_evidence
+    - inspect_diff_and_stage_only_current_unit
+    - create_one_atomic_commit_if_current_user_authorization_remains_in_effect
+    - stop_and_report
+
+fixed_decisions:
+  primary_platform: windows
+  language: python
+  python_range: ">=3.12,<3.14"
+  gui: PySide6
+  transports_first_release: [mock, serial]
+  domain_joint_unit: signed_integer_urad
+  gui_render_fps_max: 60
+  v1_state_poll_hz_options: [20, 50, 100]
+  v1_action_stream_hz_max: 50
+  v1_inflight_requests_max: 1
+  local_database: sqlite
+  portable_bundle: required
+  installer: recommended
+  account_and_role_system: forbidden
+
+git:
+  atomic_commit_each_completed_problem: true
+  push: false
+  release: false
+  stage_scope: current_unit_only
+  preserve_unrelated_dirty_files: true
+  forbidden:
+    - reset_hard
+    - checkout_cleanup
+    - clean
+    - stash_unrelated_changes
+    - force_push
+
+hardware:
+  current_state: arm_not_assembled
+  default_allowed:
+    - flash_verify_reset
+    - HELLO
+    - GET_STATE
+    - approved_future_readonly_capability
+    - malformed_readonly_frame_for_recovery_test
+  default_forbidden:
+    - ENABLE
+    - DISABLE
+    - STOP
+    - HOME
+    - TEACH_START
+    - TEACH_STOP
+    - SET_JOINT_TARGET
+    - trajectory_playback
+    - cartesian_send
+    - gamepad_motion
+    - recipe_motion
+  rule: physical_safety_confirmation_is_required_per_action_test_scope
+
+quality_commands:
+  provisional_until_unit_0:
+    lint: python -m ruff check UpperComputer
+    format: python -m ruff format --check UpperComputer
+    type: python -m mypy UpperComputer/src
+    test: python -m pytest UpperComputer/tests -q
+  rules:
+    - report_exact_command_exit_code_and_test_count
+    - never_report_compilation_as_execution
+    - missing_tool_requires_diagnosis_install_attempt_or_explicit_alternative
+    - hardware_report_must_list_every_command_category_sent
+
+units:
+  - id: 0
+    name: engineering_baseline
+    status: pending
+    depends_on: []
+    creates: [pyproject.toml, src_layout, tests_layout, resources_layout, minimal_qt_window]
+    verifies: [clean_install, lint, type_check, pytest, gui_start_close_without_hardware]
+    hardware: none
+
+  - id: 1
+    name: pure_v1_frame_protocol
+    status: blocked_by_dependency
+    depends_on: [0]
+    creates: [crc8, frame_encoder, incremental_parser, golden_fixtures]
+    verifies: [unit, hypothesis_random_chunking, noise_crc_etx_length_boundaries]
+    hardware: none
+
+  - id: 2
+    name: v1_command_codec
+    status: blocked_by_dependency
+    depends_on: [1]
+    creates: [hello_codec, state_60_byte_decoder, result_codec, joint_target_encoder]
+    verifies: [all_command_lengths, mixed_endian_vectors, unknown_enum_preservation]
+    hardware: none
+
+  - id: 3
+    name: transport_contract_and_mock
+    status: blocked_by_dependency
+    depends_on: [1, 2]
+    creates: [transport_protocol, memory_duplex, deterministic_mock, fault_injection]
+    verifies: [transport_contract, seeded_replay, bounded_queues, disconnect_scenarios]
+    hardware: none
+
+  - id: 4
+    name: serial_transport_and_discovery
+    status: blocked_by_dependency
+    depends_on: [3]
+    creates: [serial_worker, port_discovery, cancellation, write_queue]
+    verifies: [contract_suite, fake_serial, open_close_cancel, permission_and_disconnect]
+    hardware: enumeration_only
+
+  - id: 5
+    name: device_session
+    status: blocked_by_dependency
+    depends_on: [2, 3, 4]
+    creates: [session_state_machine, handshake, v1_single_inflight, readonly_reconnect]
+    verifies: [transition_table, timeout, stale_snapshot, reconnect_disarms]
+    hardware: readonly_optional
+
+  - id: 6
+    name: config_logging_sqlite
+    status: blocked_by_dependency
+    depends_on: [0, 5]
+    creates: [config_schema, migrations, recorder, csv_json_export]
+    verifies: [migration, transaction_failure, batch_write, export_roundtrip]
+    hardware: none
+
+  - id: 7
+    name: gui_shell
+    status: blocked_by_dependency
+    depends_on: [0, 5, 6]
+    creates: [main_window, navigation, status_bar, themes, notification_center]
+    verifies: [pytest_qt_navigation, layout_restore_without_arm_state, safe_shutdown]
+    hardware: none
+
+  - id: 8
+    name: connection_page
+    status: blocked_by_dependency
+    depends_on: [4, 5, 7]
+    creates: [mock_serial_selector, port_list, handshake_timeline, reconnect_controls]
+    verifies: [gui_connect_disconnect, failed_handshake, port_refresh]
+    hardware: readonly_optional
+
+  - id: 9
+    name: dashboard_and_joint_monitor
+    status: blocked_by_dependency
+    depends_on: [5, 7, 8]
+    creates: [snapshot_viewmodel, six_axis_cards, plots, link_fault_cards]
+    verifies: [unknown_v1_fields, 100hz_input_60fps_render, bounded_plot_ring]
+    hardware: readonly_optional
+
+  - id: 10
+    name: reference_asset_pipeline
+    status: blocked_by_dependency
+    depends_on: [0]
+    creates: [urdf_mesh_copy_tool, hash_manifest, package_uri_resolver]
+    verifies: [seven_meshes, source_hashes, bounds, no_absolute_desktop_paths]
+    hardware: none
+
+  - id: 11
+    name: joint_mapping_and_fk
+    status: blocked_by_dependency
+    depends_on: [10]
+    creates: [joint_model_mapping, fk, coordinate_report]
+    verifies: [zero_pose, single_joint_cases, mapping_roundtrip, golden_pose_report]
+    hardware: none
+
+  - id: 12
+    name: workspace_3d
+    status: blocked_by_dependency
+    depends_on: [7, 9, 10, 11]
+    creates: [actual_scene, ghost_scene, axes, camera, trajectory_tail]
+    verifies: [headless_scene_data, screenshots, 60fps_baseline, resource_packaging_probe]
+    hardware: none
+
+  - id: 13
+    name: safety_gate
+    status: blocked_by_dependency
+    depends_on: [5, 6, 11]
+    creates: [command_classification, arm_context, safety_decision, preview_hash]
+    verifies: [branch_coverage_100_target, hypothesis_boundaries, all_disarm_triggers]
+    hardware: none
+
+  - id: 14
+    name: manual_joint_control_mock
+    status: blocked_by_dependency
+    depends_on: [9, 12, 13]
+    creates: [absolute_relative_targets, ghost_preview, hold_to_run, stop_intent]
+    verifies: [mock_e2e, focus_loss, mouse_release, disconnect, limit_denial]
+    hardware: readonly_only
+
+  - id: 15
+    name: trajectory_domain_editor
+    status: blocked_by_dependency
+    depends_on: [11, 12, 13]
+    creates: [trajectory_schema, validation, resampling, smoothing, undo_redo]
+    verifies: [property_tests, endpoint_preservation, raw_immutable, large_trajectory]
+    hardware: none
+
+  - id: 16
+    name: playback_engine_mock
+    status: blocked_by_dependency
+    depends_on: [14, 15]
+    creates: [monotonic_scheduler, pause_resume_abort, late_point_drop]
+    verifies: [50hz_cap, no_burst_catchup, disconnect_fault_error_injection]
+    hardware: readonly_only
+
+  - id: 17
+    name: teach_recording_mock
+    status: blocked_by_dependency
+    depends_on: [13, 15, 16]
+    creates: [teach_state_machine, mask_checklist, raw_recorder, review_save]
+    verifies: [mock_e2e, final_sample, remains_disabled_ui, raw_processed_separation]
+    hardware: readonly_only
+
+  - id: 18
+    name: cartesian_preview_ik
+    status: blocked_by_dependency
+    depends_on: [11, 12, 15]
+    creates: [ik_solver, solution_ranking, singular_unreachable_reporting]
+    verifies: [ik_fk_roundtrip, limits, golden_poses, ghost_only_enforcement]
+    hardware: none
+
+  - id: 19
+    name: calibration_and_homing_wizard_mock
+    status: blocked_by_dependency
+    depends_on: [6, 11, 13]
+    creates: [axis_wizard, config_diff, import_export, mock_limit_sequence]
+    verifies: [missing_config, timeout, cancel, audit, v1_not_configured]
+    hardware: readonly_only
+
+  - id: 20
+    name: diagnostics_protocol_console_bundle
+    status: blocked_by_dependency
+    depends_on: [5, 6, 7, 13]
+    creates: [frame_tree, counters, safe_form_console, diagnostic_bundle]
+    verifies: [no_raw_safety_bypass, corrupt_frames, bundle_redaction]
+    hardware: readonly_optional
+
+  - id: 21
+    name: gamepad_and_recipe_mock
+    status: blocked_by_dependency
+    depends_on: [13, 14, 16]
+    creates: [gamepad_mapping, deadzone, focus_stop, recipe_schema_runner]
+    verifies: [hold_to_run, static_recipe_check, abort, safety_gate_unification]
+    hardware: readonly_only
+
+  - id: 22
+    name: dataset_interface
+    status: blocked_by_dependency
+    depends_on: [6, 15, 16, 17]
+    creates: [episode_schema, observation_action_result, export]
+    verifies: [time_fields, schema_roundtrip, model_action_mock_default]
+    hardware: none
+
+  - id: 23
+    name: firmware_update_tool
+    status: blocked_by_dependency
+    depends_on: [5, 6, 7]
+    creates: [tool_probe, artifact_inspection, qprocess_runner, verify_reset_hello]
+    verifies: [argument_array, fake_process_outputs, hash_target_sn_checks]
+    hardware: flash_verify_optional
+
+  - id: 24
+    name: protocol_v2_approval_package
+    status: blocked_by_dependency
+    depends_on: [2, 5, 20]
+    creates: [final_field_table, ids, endian, golden_frames, resource_and_rollback_plan]
+    verifies: [document_consistency, fixture_review]
+    hardware: none
+    stop_requires_user_approval: protocol_v2
+
+  - id: 25
+    name: protocol_v2_mcu
+    status: blocked_by_approval
+    depends_on: [24]
+    creates: [capabilities, sequence, device_time, fast_state, parser_timeout]
+    verifies: [host_tests, sanitizer, stm32_build, flash_verify, readonly_board]
+    hardware: readonly_only
+
+  - id: 26
+    name: protocol_v2_desktop
+    status: blocked_by_dependency
+    depends_on: [25]
+    creates: [negotiation, v1_fallback, sequence_tracker, telemetry, diagnostics]
+    verifies: [v1_v2_matrix, mock_faults, unknown_schema, reconnect]
+    hardware: readonly_optional
+
+  - id: 27
+    name: high_baud_approval_and_performance
+    status: blocked_by_approval
+    depends_on: [25, 26]
+    creates: [baud_plan, benchmark, rollback]
+    verifies: [error_rate, soak, cpu, queue, actual_hz]
+    hardware: readonly_only
+
+  - id: 28
+    name: portable_bundle
+    status: blocked_by_dependency
+    depends_on: [23, 26]
+    creates: [pyinstaller_spec, portable_zip, version, licenses, sha256]
+    verifies: [clean_windows_without_python, unicode_space_path, mock_demo, all_assets]
+    hardware: none
+
+  - id: 29
+    name: installer
+    status: blocked_by_dependency
+    depends_on: [28]
+    creates: [inno_setup, upgrade_uninstall_rules]
+    verifies: [install_upgrade_uninstall, user_data_retention, no_unknown_driver_install]
+    hardware: none
+
+  - id: 30
+    name: readonly_board_acceptance
+    status: blocked_by_dependency
+    depends_on: [23, 26, 28]
+    creates: [readonly_test_report, command_audit, soak_report]
+    verifies: [hello_state_capabilities, reconnect, crc_noise_dma, one_to_eight_hour_soak]
+    hardware: readonly_required
+
+  - id: 31
+    name: real_action_acceptance
+    status: blocked_by_physical_gate
+    depends_on: [30]
+    subunits: [31A_single_axis, 31B_six_axis, 31C_homing, 31D_teach, 31E_playback, 31F_cartesian]
+    verifies: [scope_specific_plan_and_observed_results]
+    hardware: action_requires_per_subunit_confirmation
+
+  - id: 32
+    name: final_release_acceptance
+    status: blocked_by_dependency
+    depends_on: [28, 29, 30]
+    creates: [traceability_evidence, manuals, known_limits, final_hashes]
+    verifies: [required_features, test_evidence, mock_demo, packaging, deferred_hardware_labels]
+    hardware: no_new_actions
+
+unit_completion_record:
+  required_fields:
+    - unit
+    - commit
+    - files
+    - interfaces_added
+    - commands_run
+    - tests_passed_failed_not_run
+    - performance
+    - hardware_connected
+    - hardware_command_categories_sent
+    - action_commands_sent
+    - approvals_pending
+    - known_limitations
+    - next_unit
+  stop_after_each_unit: true

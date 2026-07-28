@@ -1,0 +1,140 @@
+project:
+  name: ZeroArm Desktop
+  kind: desktop_debugger_and_operator_console
+  owner_scope: personal
+  primary_platform: windows
+  cross_platform_design: true
+  language: zh_CN
+  implementation_status: docs/IMPLEMENTATION_STATUS.md
+  implementation_blueprint: docs/15_IMPLEMENTATION_BLUEPRINT.md
+  execution_manifest: docs/16_AGENT_EXECUTION_MANIFEST.yaml
+  api_contracts: docs/17_API_DATA_AND_FIXTURE_CONTRACTS.md
+
+stack:
+  language: python
+  python: ">=3.12,<3.14"
+  gui: PySide6
+  serial: pyserial
+  charts: pyqtgraph
+  math: [numpy, scipy]
+  model_import: [urdf_parser_or_internal_adapter, trimesh]
+  validation: pydantic
+  storage: sqlite
+  test: [pytest, pytest-qt, hypothesis]
+  packaging: [PyInstaller, Inno_Setup_optional]
+
+product_modes:
+  observer:
+    hardware_actions: false
+  debug:
+    packet_inspector: true
+    fault_injection_mock_only: true
+  operator:
+    hardware_actions: approval_and_safety_gate_required
+
+transports:
+  required: [mock, serial]
+  future: [tcp, mqtt]
+  rule: domain_and_gui_must_not_import_pyserial_directly
+
+performance:
+  current_v1:
+    serial_baud: 115200
+    state_sample_hz_max: 100
+    command_stream_hz_max: 50
+    gui_render_fps: 60
+    plot_sample_hz: 100
+  future_v2:
+    target_baud_candidates: [460800, 921600]
+    telemetry_hz_target: 200
+    enable_only_after_board_benchmark: true
+  queues:
+    gui_samples: bounded_latest_value
+    commands: bounded_with_priority_stop
+
+safety:
+  software_stop_is_emergency_stop: false
+  readonly_commands: [HELLO, GET_STATE, GET_CAPABILITIES_future]
+  dangerous_commands:
+    - ENABLE
+    - DISABLE
+    - STOP
+    - HOME
+    - TEACH_START
+    - TEACH_STOP
+    - SET_JOINT_TARGET
+    - trajectory_playback
+  dangerous_hardware_test_requires_user_confirmation: true
+  gravity_axis_release_requires_physical_support: true
+  continuous_motion_requires_hold_to_run_or_explicit_playback_arm: true
+
+features:
+  required_pages:
+    - startup_and_connection
+    - dashboard
+    - joint_monitor
+    - manual_joint_control
+    - cartesian_preview
+    - teach_recording
+    - trajectory_editor
+    - calibration_and_homing
+    - diagnostics
+    - protocol_console
+    - logs_and_export
+    - firmware_update
+    - settings
+    - 3d_workspace
+    - gamepad
+    - data_collection
+    - automation_recipes
+  no_account_or_role_system: true
+
+storage:
+  session_database: sqlite
+  export: [csv, json]
+  capture:
+    - command
+    - response
+    - raw_frame
+    - target_joint
+    - actual_joint
+    - velocity_future
+    - current_future
+    - fault
+    - connection_event
+    - operator_annotation
+
+reference_assets:
+  root: ../docx/Reference_project/zero-robotic-arm-master
+  urdf: "3. Simulink/URDF_XG_Robot_Arm_Urdf_V1_1/urdf/URDF_XG_Robot_Arm_Urdf_V1_1.urdf"
+  meshes: "3. Simulink/URDF_XG_Robot_Arm_Urdf_V1_1/meshes"
+  mujoco: "5. Deep_LR/robot_arm_mujoco.xml"
+  dh: "3. Simulink/D-H.xlsx"
+  rule: import_validate_and_copy_runtime_assets_do_not_mutate_reference
+
+approvals:
+  protocol_v2_implementation:
+    status: pending
+    required_from: user
+  high_baud_firmware_change:
+    status: pending
+    required_from: user
+  real_motor_test:
+    status: blocked_until_arm_assembled_and_user_confirms
+  teach_release_test:
+    status: blocked_until_gravity_axes_supported_and_user_confirms
+  mcu_software_remediation:
+    status: user_requests_all_confirmed_software_issues_fixed
+    execution_rule: one_review_unit_and_one_atomic_commit_per_problem
+    physical_action_excluded_without_separate_confirmation: true
+
+delivery:
+  portable_windows_bundle: required
+  installer: recommended
+  source_tests: required
+  mock_demo: required
+  board_readonly_test: required
+  real_motion_acceptance: deferred_by_hardware_gate
+  commit_each_completed_problem: required
+  stage_current_unit_only: true
+  auto_push_release: false
