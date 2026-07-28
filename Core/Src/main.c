@@ -111,7 +111,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    HAL_UART_Transmit(&huart1, (uint8_t*) "Hello World!\r\n",sizeof("Hello World!\r\n"),HAL_Delay(100));
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

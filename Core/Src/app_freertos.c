@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "app.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -114,11 +114,13 @@ void MX_FREERTOS_Init(void) {
 void StartInitTask(void *argument)
 {
   /* USER CODE BEGIN StartInitTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
+  (void)argument;
+
+  if (!app_start()) {
+    Error_Handler();
   }
+
+  osThreadExit();
   /* USER CODE END StartInitTask */
 }
 

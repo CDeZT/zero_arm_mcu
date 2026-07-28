@@ -70,6 +70,8 @@ docx/Reference_project/zero-robotic-arm-master/2. Software/robot/
 直接移植不等于原样照搬：
 
 - 默认把 M_Project 的阻塞 `HAL_UART_Transmit()` 改为 `host_tx_queue`。
+- `X_V2.h` 默认移除对 `fdcan.h` 的直接包含，只保留标准类型和 Platform
+  发送入口，避免 Motor 驱动泄漏 HAL 句柄。
 - 建议从 `can_SendCmd()` 删除 UART 调试、`HAL_Delay()` 和无限重试，再单独
   设计 TX FIFO 满载处理。
 - 不直接复制旧 ZeroArm 的 EMM/F407 驱动、动态路径内存和外层 PID。
@@ -105,7 +107,7 @@ docx/Reference_project/zero-robotic-arm-master/2. Software/robot/
 | 数据 | 单位 |
 |---|---|
 | 关节角 | `urad`，微弧度，`int32_t` |
-| 电机位置 | `x100`，以 X 协议实际定义为准 |
+| 电机机械角 | `urad`，直到 X_V2 边界才转为协议刻度 |
 | 时间 | `ms`，`uint32_t` |
 | 关节掩码 | bit0～bit5 对应 J1～J6 |
 
@@ -147,6 +149,7 @@ typedef enum
     ROBOT_STATE_BOOT = 0,
     ROBOT_STATE_READY,
     ROBOT_STATE_HOMING,
+    ROBOT_STATE_TEACHING,
     ROBOT_STATE_RUNNING,
     ROBOT_STATE_FAULT
 } robot_run_state_t;
@@ -167,6 +170,8 @@ typedef enum
     ROBOT_SERVICE_ENABLE,
     ROBOT_SERVICE_DISABLE,
     ROBOT_SERVICE_STOP,
+    ROBOT_SERVICE_TEACH_START,
+    ROBOT_SERVICE_TEACH_STOP,
     ROBOT_SERVICE_HOME
 } robot_service_type_t;
 
@@ -189,14 +194,14 @@ typedef struct
 
 typedef struct
 {
-    int32_t position_x100[ROBOT_JOINT_COUNT];
+    int32_t motor_urad[ROBOT_JOINT_COUNT];
     uint32_t generation;
 } motor_target_snapshot_t;
 
 typedef struct
 {
     uint8_t motor_id;
-    int32_t position_x100;
+    int32_t position_urad;
     int32_t velocity;
     uint16_t current_ma;
     uint16_t status;
@@ -610,9 +615,13 @@ static robot_result_t robot_put_service(
         .joint_mask = joint_mask
     };
 
-    uint8_t priority =
-        (type == ROBOT_SERVICE_STOP) ?
-        255U : 0U;
+    uint8_t priority = 0U;
+    if (type == ROBOT_SERVICE_STOP) {
+        priority = 255U;
+    } else if (type == ROBOT_SERVICE_TEACH_START ||
+               type == ROBOT_SERVICE_TEACH_STOP) {
+        priority = 200U;
+    }
 
     if (osMessageQueuePut(
             s_service_queue,
@@ -667,8 +676,9 @@ robot_result_t robot_request_home(uint8_t mask)
 }
 ```
 
-STOP 使用最高消息优先级；其他服务使用普通优先级。任务环境中 timeout
-第一版也使用 0，避免 HostTask 被满队列长期阻塞。队列满应回复明确错误。
+STOP 使用最高消息优先级；TEACH 状态切换低于 STOP、高于普通服务。任务环境
+中 timeout 第一版也使用 0，避免 HostTask 被满队列长期阻塞。队列满应回复
+明确错误。
 
 ### 7.3 Robot 状态
 
@@ -1062,22 +1072,47 @@ void trajectory_step(
 
 ### 10.3 关节到电机转换
 
+建议接口：
+
+```c
+bool joint_to_motor_position(
+    uint8_t joint,
+    int32_t joint_urad,
+    int32_t *motor_urad);
+
+bool motor_to_joint_position(
+    uint8_t joint,
+    int32_t motor_urad,
+    int32_t *joint_urad);
+```
+
 概念公式：
 
 ```text
-motor_position =
+motor_urad =
     (joint_target - joint_zero)
     × gear_ratio
     × motor_sign
     + motor_home
+
+joint_urad =
+    (motor_actual - motor_home)
+    / gear_ratio
+    × motor_sign
+    + joint_zero
 ```
 
 实际实现需要：
 
-- 明确 X 协议位置单位。
+- 正向和反向转换使用同一份方向、减速比和零点配置。
 - 避免中间计算溢出。
 - 对每轴方向、减速比和零点做独立测试。
 - 未完成标定前只允许低速、小角度测试。
+
+X_V2 参考函数接收角度 `float`，内部默认按 0.1° 打包。说明书第 80 页还
+允许把命令输入改成 0.01°。业务快照不保存 `x10/x100`，只在 X_V2 适配
+边界按当前命令选项转换。说明书第 72 页规定反馈 `0x36` 按 `/10` 得到角度，
+应据此先转为 `motor_urad`，再做反向关节转换。
 
 ---
 
@@ -1222,7 +1257,7 @@ void motor_send_latest_target(void)
         zdt_position_fields_t fields =
             motor_build_position_fields(
                 joint,
-                target.position_x100[joint]);
+                target.motor_urad[joint]);
 
         X_V2_Traj_Pos_Control(
             motor_id,
@@ -1393,6 +1428,78 @@ TX FIFO 满时不能假装发送成功。第一版可选择带总期限的 `osDe
 重试，或固定容量软件 TX queue。两种方案都要保持分包顺序，让同步广播排在
 六轴目标之后；不要在 ISR 中等待，也不要无限重试。选择留到审查单元 12。
 
+### 11.7 拖动示教骨架
+
+可行性依据见 Design 10.1。这里的首版示教指“松轴记录”，不是驱动器内建
+重力补偿，也不在 MCU 保存轨迹。
+
+建议增加 Robot API：
+
+```c
+robot_result_t robot_request_teach_start(
+    uint8_t joint_mask);
+robot_result_t robot_request_teach_stop(void);
+```
+
+`robot_request_teach_start()` 默认先使用与 STOP 相同的运动目标失效逻辑，
+再投递高于普通服务、低于 STOP 的状态切换消息。
+
+MotorTask 处理服务的思路：
+
+```c
+case ROBOT_SERVICE_TEACH_START:
+    motor_manager_stop_mask(service.joint_mask);
+    motor_discard_pending_target();
+
+    for_each_selected_joint {
+        X_V2_Auto_Return_Sys_Params_Timed(
+            motor_id,
+            S_CPOS,
+            20U);
+
+        X_V2_En_Control(
+            motor_id,
+            false,
+            false);
+    }
+
+    robot_invalidate_motion_target();
+    robot_set_run_state(
+        ROBOT_STATE_TEACHING);
+    break;
+
+case ROBOT_SERVICE_TEACH_STOP:
+    for_each_selected_joint {
+        X_V2_Auto_Return_Sys_Params_Timed(
+            motor_id,
+            S_CPOS,
+            0U);
+    }
+
+    robot_sync_reference_to_actual();
+    robot_set_run_state(
+        ROBOT_STATE_READY);
+    /* 保持失能，不自动锁轴。 */
+    break;
+```
+
+Motor RX 收到功能码 `0x36` 后：
+
+```text
+有符号 X 实时位置（默认 0.1°）
+ -> motor_urad
+ -> motor_to_joint_position()
+ -> Robot actual_joint_urad
+```
+
+不要原样复制 M_Project `state_machine.c` 的 `0x36` 格式化片段：该片段只
+转发了四字节数值，没有应用手册规定的正负号字节。拖动示教必须先解析符号，
+再按 X 固件默认 `/10` 得到角度。
+
+PC 在 TEACHING 状态下周期读取 GET_STATE，记录时间戳和六轴实际角。回放仍
+走现有 SET_JOINT_TARGET。开始示教前需要物理支撑重力轴；首次台架还要确认
+失能后 `0x36` 会继续变化、TEACH_STOP 后重新使能不会追赶旧目标。
+
 ---
 
 ## 12. Homing 与限位接口预留
@@ -1558,12 +1665,15 @@ test_X_V2
 | 12 | `platform_fdcan.h/.c` | Filter、Start、RX queue、`can_SendCmd` | ID、DLC、分包、TX 满和失败上报 |
 | 13 | `motor_manager.h/.c` | 单电机服务、目标快照和反馈解析 | 假 Platform 测试 |
 | 14 | `app_tasks.c`、`messages.c` | 增加 MotorTask 与 ENABLE/DISABLE/STOP | 单电机台架审查门 |
-| 15 | `joint_transform.h/.c` | 关节到电机的位置转换 | `test_joint_transform` |
+| 15 | `joint_transform.h/.c` | 关节与电机位置双向转换 | `test_joint_transform` |
 | 16 | `trajectory.h/.c` | 20 ms 在线限速和停止接口 | 边界、负方向、到达目标 |
 | 17 | `motion.h/.c` | 整组范围检查和六轴转换 | 越界整组拒绝 |
 | 18 | `app_tasks.c`、`app.c` | 接入 MotionTask，不提前接 Homing | PC 目标到单电机闭环链路 |
 | 19 | `motor_manager.c`、`joint_config.c` | 扩展地址 1～6 和同步触发 | 六目标后广播同步 |
-| 20 | `platform_gpio.h/.c`、`homing.h/.c` | 仅写无硬件依赖的预留接口 | 限位关闭时仍可编译 |
+| 20 | `robot_types.h`、`robot.h/.c` | TEACH 状态、请求和运动目标失效 | 状态转换；保持失能策略 |
+| 21 | `motor_manager.c` | STOP、20 ms 位置返回、失能和最终位置同步 | 支撑条件下验证失能反馈 |
+| 22 | `messages.h/.c` | TEACH_START/STOP；GET_STATE 供 PC 记录 | 六轴时间序列完整 |
+| 23 | `platform_gpio.h/.c`、`homing.h/.c` | 仅写无硬件依赖的预留接口 | 限位关闭时仍可编译 |
 
 有新增 `.c` 时在同一单元加入 CMake，并保持当前可用构建配置通过。纯算法
 单元优先做 PC 测试；硬件单元使用低速、小角度和可立即 STOP 的台架条件。

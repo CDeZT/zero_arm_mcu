@@ -1,7 +1,7 @@
 # ZeroArm MCU 固件架构设计
 
 > 目标平台：STM32G474VET6  
-> 文档版本：V2.1（精简参考版）  
+> 文档版本：V2.2（精简参考版）
 > 日期：2026-07-27  
 > 配套代码参考：`ZEROARM_MCU_FIRMWARE_CODE_REFERENCE_V1.md`
 
@@ -48,8 +48,8 @@
 | PC 通信 | USART1，PA9/PA10 |
 | 电机通信 | FDCAN1，PA11/PA12 |
 | 电机 | 六台 ZDT X 系列，地址计划为 1～6 |
-| 限位 | J1～J5 预留，当前不在 CubeMX 配置 |
-| J6 | 当前无回零限位 |
+| 限位输入 | PE7～PE12，J1～J6 已在 CubeMX 配置 |
+| 实际安装计划 | J1～J5 使用；J6/PE12 暂作硬件预留 |
 
 板卡依据：
 
@@ -69,6 +69,8 @@ docx/Board/ST-10 STM32G474VET6_原理图.pdf
 | FDCAN1 | Classic，Normal，500 kbit/s，自动重传 |
 | FDCAN 时序 | Prescaler17，Seg1=15，Seg2=4，SJW=1 |
 | FDCAN Filter RAM | Std=0，Ext=1 |
+| 限位 GPIO | PE7～PE12，上拉、上升沿 EXTI |
+| 限位 NVIC | EXTI9_5=6；EXTI15_10=6 |
 | NVIC | FDCAN=6；USART/DMA=7；均可使用 RTOS ISR API |
 | FreeRTOS | CMSIS V2，抢占，1 kHz tick，heap_4，16000 B |
 | InitTask | Normal，128 words |
@@ -80,6 +82,16 @@ docx/Board/ST-10 STM32G474VET6_原理图.pdf
 CubeMX 配置本身已经生成生效；应用层还需要启动 UART DMA、FDCAN、队列和工作任务。
 
 HSE CSS 当前保持关闭。只有实现 NMI 中的硬件停机与复位后才允许开启。
+
+限位已完成“引脚和中断配置”，但 Homing 业务代码仍关闭。两者不要混淆：
+
+```text
+CubeMX GPIO/EXTI 已配置
+ != 已经具备消抖、停机、回退和设零功能
+```
+
+当前 CubeMX 标签 `J1_LIM`、`J2_Lim` 等大小写不统一，不影响运行，但建议下次
+在 CubeMX 统一为 `J1_LIM`～`J6_LIM`，避免生成的 Pin 宏名称不一致。
 
 ---
 
@@ -115,7 +127,8 @@ PC
 ### 3.2 当前只预留
 
 ```text
-Homing 状态机和限位接口
+Homing 状态机和限位软件接口（GPIO/EXTI 已配置）
+拖动示教模式（六轴反馈稳定后实现）
 夹爪字段
 duration_ms
 CSS 故障接口
@@ -240,7 +253,7 @@ App 是“装配入口”：它创建队列、互斥锁和事件标志，再通�
 3. 队列保存数据副本，不保存任务局部数组指针。
 4. DMA 活动期间，其缓冲区必须继续有效。
 5. HAL/RTOS 创建、启动和发送结果需要处理。
-6. 未配置限位时，代码不能引用尚未生成的 CubeMX Pin 宏。
+6. 限位 Pin 宏已经生成；业务代码仍应通过 Platform 映射访问，不跨层直接引用。
 7. 每个审查单元结束后保持工程可编译；涉及纯算法时补最小测试。
 
 ---
@@ -284,7 +297,7 @@ zero_arm_mcu/
 │   ├── Inc/
 │   │   ├── motion.h              # 周期处理和范围检查
 │   │   ├── trajectory.h          # 在线限速/插值
-│   │   ├── joint_transform.h     # 关节与电机单位转换
+│   │   ├── joint_transform.h     # 关节与电机位置双向转换
 │   │   └── homing.h              # 回零预留
 │   └── Src/
 │       ├── motion.c
@@ -351,7 +364,7 @@ Idle Task 和 Timer Service Task 由 FreeRTOS 自动创建，不在 CubeMX 手�
 
 | 对象 | 容量 | 用途 |
 |---|---:|---|
-| robot_service_queue | 8 | ENABLE、DISABLE、STOP、HOME |
+| robot_service_queue | 8 | ENABLE、DISABLE、STOP、TEACH、HOME |
 | can_rx_queue | 16 | ISR 到 MotorTask 的 CAN 原始帧 |
 | host_tx_queue | 8 | 等待 UART TX DMA 的完整帧 |
 | latest_joint_target | 1 份快照 | Host 到 Motion，只保留最新值 |
@@ -402,7 +415,8 @@ Design 只列接口方向，具体签名和伪代码放在 Code Reference，避�
 | DISABLE | 失能关节掩码 |
 | STOP | 停止并清除待发送旧目标 |
 | SET_JOINT_TARGET | 六轴绝对目标 |
-| HOME | 未配置限位时回复 NOT_CONFIGURED |
+| TEACH_START/STOP | 单元 22 接入；松轴记录模式 |
+| HOME | 限位软件未启用或所选关节未安装限位时回复 NOT_CONFIGURED |
 
 第一版至少验证以下输入：
 
@@ -446,6 +460,49 @@ CRC 错误
 | Cartesian 轨迹 | PC 做路径和 IK |
 
 以后线性插值、时间缩放、S 曲线只修改 `trajectory.c`，不改变 Robot/Motor 接口。
+
+### 10.1 拖动示教可行性
+
+结论：通信和固件框架可以支持“电机失能、人工拖动、记录六轴位置、以后
+回放”，但说明书没有提供完整的一键式机械臂拖动示教功能，机械和安全条件
+需要台架确认。
+
+说明书依据：
+
+| 依据 | 能说明什么 |
+|---|---|
+| X42S 手册第 50 页，5.3.2 | `X_V2_En_Control(..., false, ...)` 会松轴，轴可手动拧动 |
+| 第 66 页，5.5.1 | X42S 可按设定周期主动返回系统参数；时间 0 表示停止 |
+| 第 72 页，5.5.13 | 功能码 `0x36` 返回有符号实时位置；X 固件单位为 0.1° |
+| M_Project `X_V2.h/.c` | 已有 `X_V2_Auto_Return_Sys_Params_Timed(..., S_CPOS, time_ms)` |
+
+当前建议方案：
+
+```text
+PC 发 TEACH_START
+ -> STOP 当前轨迹
+ -> 确认机械臂已被支撑
+ -> 六轴启动 20 ms 实时位置返回
+ -> 失能选定电机并确认位置在失能后仍会更新
+ -> Motor feedback 更新 Robot actual state
+ -> PC 以 GET_STATE 记录“时间戳 + 六轴角度”
+ -> TEACH_STOP 停止定时返回并保存最终位置
+ -> 保持失能，等待人工确认后再使能或回放
+```
+
+首版不在 MCU 保存整条轨迹，避免固定内存被长时间示教占满；PC 负责记录、
+平滑和回放，MCU 继续使用普通 `SET_JOINT_TARGET` 链路。
+
+实现前需要验证：
+
+- 电机失能后，编码器 `0x36` 是否仍连续更新。手册没有明确保证这一组合。
+- 当前减速机构能否安全反驱；电机端编码器不能测量减速器回差和结构变形。
+- J2/J3 等重力轴失能后可能快速下落，必须有支撑、配重或制动。
+- 力位混合/限流模式不等于重力补偿，没有实测前不作为安全示教模式。
+- 重新使能是否会追旧目标。首版 TEACH_STOP 后不自动使能，先同步最终状态。
+
+代码搭建放在 Code Reference 审查单元 20～22：六轴反馈、双向关节转换和
+同步运动已经通过单元 19 审查后再接入；不增加 TeachingTask。
 
 ---
 
@@ -524,32 +581,64 @@ USART1 是二进制协议口，不直接混入 `printf` 日志。
 
 ---
 
-## 13. Homing 和限位预留
+## 13. Homing 和限位
 
-当前：
+### 13.1 当前硬件配置
+
+| 关节 | MCU 引脚 | 板上排针 | EXTI 中断 | 当前用途 |
+|---|---|---|---|---|
+| J1 | PE7 | J2-27 | EXTI9_5 | 计划安装 |
+| J2 | PE8 | J2-28 | EXTI9_5 | 计划安装 |
+| J3 | PE9 | J2-25 | EXTI9_5 | 计划安装 |
+| J4 | PE10 | J2-26 | EXTI15_10 | 计划安装 |
+| J5 | PE11 | J2-23 | EXTI15_10 | 计划安装 |
+| J6 | PE12 | J2-24 | EXTI15_10 | 暂作预留 |
+
+J2-1～J2-6 为 GND。默认接线采用“常闭 NC 开关接地 + GPIO 上拉”：
+
+```text
+正常：开关闭合 -> GPIO 低
+触发：开关断开 -> GPIO 高 -> 上升沿 EXTI
+断线：GPIO 也会变高 -> 按触发/故障处理
+```
+
+因此当前 CubeMX 的 `GPIO_PULLUP + GPIO_MODE_IT_RISING` 与该接线匹配。若以后
+改用常开开关、NPN 传感器或外部调理板，必须重新确认有效电平和触发边沿；
+5 V、12 V、24 V 传感器输出不能直接接入 3.3 V GPIO。
+
+J6 只有预留输入、没有实际开关时，上拉会使 PE12 始终为高。软件不能仅根据
+“存在 Pin 宏”判断限位已安装，应使用安装掩码，例如 J1～J5 为 `0x1F`，让
+`platform_limit_is_configured(5)` 返回 false。
+
+### 13.2 当前软件状态
 
 ```c
 #define CONFIG_LIMIT_SWITCH_ENABLED 0
 #define CONFIG_HOMING_ENABLED       0
 ```
 
-未配置时：
+这表示 GPIO/EXTI 已生效，但回调、消抖和 Homing 尚未接入。此阶段 HOME 仍应
+回复 `ROBOT_ERR_NOT_CONFIGURED`，不能因为 CubeMX 配好了就宣称可以自动回零。
 
-- `platform_limit_is_configured()` 返回 false。
-- `platform_limit_is_active()` 返回 false。
-- `homing_start()` 返回 false。
-- HOME 回复 `ROBOT_ERR_NOT_CONFIGURED`。
+### 13.3 软件接入顺序
 
-以后硬件确定后只需要：
+1. 增加 `platform_gpio.h/.c`，集中保存关节编号、Pin、Port、有效电平和安装掩码。
+2. 在 `HAL_GPIO_EXTI_Callback()` 中只记录待确认位并唤醒任务，不延时、不解析业务。
+3. 任务侧等待约 5～10 ms 后重新读取 GPIO，确认仍为高才认定触发。
+4. 先做“按下/断线能被读取”的台架测试，再打开 `CONFIG_LIMIT_SWITCH_ENABLED`。
+5. 电机低速单轴测试通过后，再实现 Seek、Backoff、SetZero 等 Homing 状态。
+6. 最后打开 `CONFIG_HOMING_ENABLED` 并接入 HOME 命令。
 
-1. CubeMX 配置实际 GPIO/EXTI。
-2. 命名 J1_LIMIT～J5_LIMIT。
-3. 按有效电平选择边沿和上下拉。
-4. EXTI 优先级使用 6。
-5. 在 `platform_gpio.c` 增加 Pin、逻辑编号和有效电平映射。
-6. 打开功能开关。
+推荐接口：
 
-Homing 是 MotionTask 内的非阻塞状态机，不增加任务。
+```c
+bool platform_limit_is_configured(uint8_t joint_index);
+bool platform_limit_is_active(uint8_t joint_index);
+void platform_gpio_on_exti(uint16_t gpio_pin);
+```
+
+EXTI 相当于“门铃”，负责及时通知；GPIO 重读相当于“再看一眼门是否真的开了”，
+负责消抖和确认。Homing 仍放在 MotionTask 内做非阻塞状态机，不增加任务。
 
 ---
 
@@ -636,7 +725,8 @@ Homing 方向
  -> Robot + Protocol + UART，打通 PC 链路
  -> X_V2 + FDCAN + Motor，验证单电机
  -> Transform + Trajectory + Motion，扩展六电机
- -> 装机标定后再接限位和 Homing
+ -> 可选接入松轴拖动示教
+ -> 接入限位 Platform、台架验证后再实现 Homing
 ```
 
 默认采用“审查门”：
@@ -661,7 +751,10 @@ Homing 方向
 [ ] 六台电机地址唯一
 [ ] 六轴目标经过范围检查和在线限速
 [ ] 六电机使用等待同步 + 广播触发
-[ ] 未配置限位时 HOME 明确返回 NOT_CONFIGURED
+[ ] 若启用示教：失能位置可更新、轨迹由 PC 记录、停止后不自动锁轴
+[ ] 限位软件未启用时 HOME 明确返回 NOT_CONFIGURED
+[ ] J1～J5 常闭限位触发和断线均能被确认，抖动不会重复启动业务
+[ ] 未安装 J6 限位时，安装掩码不会把 PE12 上拉高误判为有效触发
 [ ] 公共状态、队列和 HAL/RTOS 返回值均正确处理
 ```
 

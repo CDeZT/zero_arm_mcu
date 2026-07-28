@@ -57,6 +57,24 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define J1_LIM_Pin GPIO_PIN_7
+#define J1_LIM_GPIO_Port GPIOE
+#define J1_LIM_EXTI_IRQn EXTI9_5_IRQn
+#define J2_LIM_Pin GPIO_PIN_8
+#define J2_LIM_GPIO_Port GPIOE
+#define J2_LIM_EXTI_IRQn EXTI9_5_IRQn
+#define J3_Lim_Pin GPIO_PIN_9
+#define J3_Lim_GPIO_Port GPIOE
+#define J3_Lim_EXTI_IRQn EXTI9_5_IRQn
+#define J4_Lim_Pin GPIO_PIN_10
+#define J4_Lim_GPIO_Port GPIOE
+#define J4_Lim_EXTI_IRQn EXTI15_10_IRQn
+#define J5_LIM_Pin GPIO_PIN_11
+#define J5_LIM_GPIO_Port GPIOE
+#define J5_LIM_EXTI_IRQn EXTI15_10_IRQn
+#define J6_LIM_Pin GPIO_PIN_12
+#define J6_LIM_GPIO_Port GPIOE
+#define J6_LIM_EXTI_IRQn EXTI15_10_IRQn
 
 /* USER CODE BEGIN Private defines */
 
