@@ -32,7 +32,8 @@ static uint8_t s_queued_service_count;
 static osStatus_t s_queue_put_status;
 static osStatus_t s_state_mutex_acquire_status;
 static osStatus_t s_target_mutex_acquire_status;
-static osStatus_t s_mutex_release_status;
+static osStatus_t s_state_mutex_release_status;
+static osStatus_t s_target_mutex_release_status;
 static uint32_t s_motor_event_flags;
 
 static void reset_fakes(void)
@@ -42,7 +43,8 @@ static void reset_fakes(void)
     s_queue_put_status = osOK;
     s_state_mutex_acquire_status = osOK;
     s_target_mutex_acquire_status = osOK;
-    s_mutex_release_status = osOK;
+    s_state_mutex_release_status = osOK;
+    s_target_mutex_release_status = osOK;
     s_motor_event_flags = 0U;
 }
 
@@ -64,7 +66,10 @@ osStatus_t osMutexRelease(osMutexId_t mutex_id)
 {
     assert(mutex_id == TEST_STATE_MUTEX ||
            mutex_id == TEST_TARGET_MUTEX);
-    return s_mutex_release_status;
+    if (mutex_id == TEST_STATE_MUTEX) {
+        return s_state_mutex_release_status;
+    }
+    return s_target_mutex_release_status;
 }
 
 osStatus_t osMessageQueuePut(
@@ -328,6 +333,44 @@ static void test_failure_paths_remain_fail_safe(void)
     assert(s_queued_service_count == 0U);
 }
 
+static void test_mutex_release_failures_are_propagated(void)
+{
+    reset_fakes();
+    init_robot();
+
+    robot_joint_target_t target = make_target(6000);
+    robot_joint_target_t output;
+    uint32_t generation;
+
+    s_target_mutex_release_status = osErrorResource;
+    assert(robot_submit_joint_target(&target) ==
+           ROBOT_ERR_STATE);
+
+    s_target_mutex_release_status = osOK;
+    assert(robot_submit_joint_target(&target) ==
+           ROBOT_OK);
+
+    s_target_mutex_release_status = osErrorResource;
+    assert(!robot_get_latest_target(
+        &output,
+        &generation));
+    assert(!robot_has_active_target());
+    assert(!robot_sync_reference_to_actual());
+
+    s_target_mutex_release_status = osOK;
+    s_state_mutex_acquire_status = osErrorResource;
+    assert(robot_submit_joint_target(&target) ==
+           ROBOT_ERR_STATE);
+    s_state_mutex_acquire_status = osOK;
+    assert(!robot_has_active_target());
+
+    s_state_mutex_release_status = osErrorResource;
+    assert(robot_submit_joint_target(&target) ==
+           ROBOT_ERR_STATE);
+    s_state_mutex_release_status = osOK;
+    assert(!robot_has_active_target());
+}
+
 int main(void)
 {
     test_init_and_teaching_state();
@@ -336,6 +379,7 @@ int main(void)
     test_stop_and_teach_start_invalidate_target();
     test_sync_reference_to_actual_restores_safe_target();
     test_failure_paths_remain_fail_safe();
+    test_mutex_release_failures_are_propagated();
 
     puts("test_robot: all tests passed");
     return 0;

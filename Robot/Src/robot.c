@@ -57,9 +57,14 @@ robot_result_t robot_submit_joint_target(
     g_joint_target_generation++;
     s_joint_target_valid = true;
 
-    osMutexRelease(s_joint_target_mutex);
+    if (osMutexRelease(s_joint_target_mutex) != osOK) {
+        return ROBOT_ERR_STATE;
+    }
 
-    robot_update_target_state(target);
+    if (!robot_update_target_state(target)) {
+        (void)robot_invalidate_motion_target();
+        return ROBOT_ERR_STATE;
+    }
     return ROBOT_OK;
 }
 
@@ -81,7 +86,9 @@ bool robot_get_latest_target(
         *generation = g_joint_target_generation;
     }
 
-    osMutexRelease(s_joint_target_mutex);
+    if (osMutexRelease(s_joint_target_mutex) != osOK) {
+        return false;
+    }
     return valid;
 }
 
@@ -93,7 +100,9 @@ bool robot_has_active_target(void)
 
     bool valid = s_joint_target_valid;
 
-    osMutexRelease(s_joint_target_mutex);
+    if (osMutexRelease(s_joint_target_mutex) != osOK) {
+        return false;
+    }
     return valid;
 }
 
@@ -222,5 +231,9 @@ bool robot_sync_reference_to_actual(void)
         return false;
     }
 
-    return robot_update_target_state(&reference);
+    if (!robot_update_target_state(&reference)) {
+        (void)robot_invalidate_motion_target();
+        return false;
+    }
+    return true;
 }
