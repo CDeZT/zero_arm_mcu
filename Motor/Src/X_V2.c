@@ -7,22 +7,52 @@ enum {
     X_V2_CHECK_BYTE = 0x6BU
 };
 
-static uint16_t x_v2_scale_tenths_u16(float value)
+static bool x_v2_scale_tenths_u16(
+    float value,
+    uint16_t *scaled)
 {
-    if (value < 0.0f) {
-        value = -value;
+    if (scaled == NULL) {
+        return false;
     }
 
-    return (uint16_t)(value * 10.0f);
+    float magnitude = value;
+    if (magnitude < 0.0f) {
+        magnitude = -magnitude;
+    }
+
+    if (!(magnitude >= 0.0f) ||
+        magnitude > 6553.5f) {
+        return false;
+    }
+
+    *scaled = (uint16_t)(magnitude * 10.0f);
+    return true;
 }
 
-static uint32_t x_v2_scale_tenths_u32(float value)
+static bool x_v2_scale_tenths_u32(
+    float value,
+    uint32_t *scaled)
 {
-    if (value < 0.0f) {
-        value = -value;
+    if (scaled == NULL) {
+        return false;
     }
 
-    return (uint32_t)(value * 10.0f);
+    float magnitude = value;
+    if (magnitude < 0.0f) {
+        magnitude = -magnitude;
+    }
+
+    /*
+     * 429496704.0f is the greatest binary32 degree value whose tenths
+     * remain representable by uint32_t.
+     */
+    if (!(magnitude >= 0.0f) ||
+        magnitude > 429496704.0f) {
+        return false;
+    }
+
+    *scaled = (uint32_t)(magnitude * 10.0f);
+    return true;
 }
 
 static bool x_v2_parameter_code(
@@ -118,10 +148,16 @@ bool X_V2_Traj_Pos_Control(
     uint8_t motion_mode,
     bool sync)
 {
-    uint16_t velocity_tenths =
-        x_v2_scale_tenths_u16(velocity_rpm);
-    uint32_t position_tenths =
-        x_v2_scale_tenths_u32(position_degrees);
+    uint16_t velocity_tenths;
+    uint32_t position_tenths;
+    if (!x_v2_scale_tenths_u16(
+            velocity_rpm,
+            &velocity_tenths) ||
+        !x_v2_scale_tenths_u32(
+            position_degrees,
+            &position_tenths)) {
+        return false;
+    }
 
     uint8_t command[16] = {
         addr,

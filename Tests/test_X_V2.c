@@ -1,6 +1,7 @@
 #include "X_V2.h"
 
 #include <assert.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -165,12 +166,32 @@ static void test_send_failure_is_reported(void)
     s_send_result = true;
 }
 
-static void test_scale_overflow_is_deterministic(void)
+static void test_invalid_scale_is_rejected(void)
 {
-    /* velocity 10000 RPM -> *10 = 100000, truncated to u16 = 34464 */
-    uint32_t count_before = s_send_count;
+    assert(X_V2_Traj_Pos_Control(
+        1U, 0U, 100U, 100U,
+        6553.5f, 429496704.0f,
+        1U, false));
+    assert(s_last_command[7] == 0xFFU);
+    assert(s_last_command[8] == 0xFFU);
+    assert(s_last_command[9] == 0xFFU);
+    assert(s_last_command[10] == 0xFFU);
+    assert(s_last_command[11] == 0xFFU);
+    assert(s_last_command[12] == 0x00U);
 
     assert(X_V2_Traj_Pos_Control(
+        1U, 0U, 100U, 100U,
+        -6553.5f, -429496704.0f,
+        1U, false));
+    assert(s_last_command[7] == 0xFFU);
+    assert(s_last_command[8] == 0xFFU);
+    assert(s_last_command[9] == 0xFFU);
+    assert(s_last_command[10] == 0xFFU);
+    assert(s_last_command[11] == 0xFFU);
+    assert(s_last_command[12] == 0x00U);
+
+    uint32_t count_before = s_send_count;
+    assert(!X_V2_Traj_Pos_Control(
         1U,
         0U,
         100U,
@@ -179,24 +200,22 @@ static void test_scale_overflow_is_deterministic(void)
         50000.0f,
         1U,
         false));
-
-    assert(s_send_count == count_before + 1U);
-    assert(s_last_length == 16U);
-    assert(s_last_command[0] == 1U);
-    assert(s_last_command[1] == 0xFDU);
-    assert(s_last_command[15] == 0x6BU);
-
-    uint16_t v_bytes =
-        (uint16_t)(((uint16_t)s_last_command[7] << 8) |
-                   s_last_command[8]);
-    assert(v_bytes == 34464U);
-
-    uint32_t p_bytes =
-        ((uint32_t)s_last_command[9] << 24) |
-        ((uint32_t)s_last_command[10] << 16) |
-        ((uint32_t)s_last_command[11] << 8) |
-        s_last_command[12];
-    assert(p_bytes == 500000U);
+    assert(!X_V2_Traj_Pos_Control(
+        1U, 0U, 100U, 100U,
+        NAN, 1.0f, 1U, false));
+    assert(!X_V2_Traj_Pos_Control(
+        1U, 0U, 100U, 100U,
+        1.0f, INFINITY, 1U, false));
+    assert(!X_V2_Traj_Pos_Control(
+        1U, 0U, 100U, 100U,
+        -INFINITY, 1.0f, 1U, false));
+    assert(!X_V2_Traj_Pos_Control(
+        1U, 0U, 100U, 100U,
+        6554.0f, 1.0f, 1U, false));
+    assert(!X_V2_Traj_Pos_Control(
+        1U, 0U, 100U, 100U,
+        1.0f, 429496736.0f, 1U, false));
+    assert(s_send_count == count_before);
 }
 
 int main(void)
@@ -208,7 +227,7 @@ int main(void)
     test_system_state_parameter();
     test_invalid_parameter_is_not_sent();
     test_send_failure_is_reported();
-    test_scale_overflow_is_deterministic();
+    test_invalid_scale_is_rejected();
 
     puts("test_X_V2: all command bytes match");
     return 0;

@@ -113,6 +113,20 @@ HostTask和MotorTask把`osEventFlagsWait()`返回值直接当作事件位使用�
 外设没有明确回滚；InitTask随后进入`Error_Handler()`。需要单独设计启动顺序或
 失败清理，不能在实现时随意删除RTOS对象。
 
+#### MCU-A10：X_V2浮点缩放存在未定义行为（已修复）
+
+参考X_V2实现把`float`的绝对值乘10后直接转换为`uint16_t/uint32_t`。NaN、Inf或
+超过目标整数可表示范围时，C转换行为未定义；速度过大还可能产生截断后的错误
+wire目标。
+
+当前实现：
+
+- 转换前检查输出指针、NaN/Inf和最大可表示边界。
+- `uint16_t`刻度最大输入为6553.5。
+- binary32位置最大安全输入为429496704.0。
+- 合法正负输入继续按绝对值打包，保持原协议语义。
+- 非法输入直接返回false且不调用CAN发送。
+
 ### B类：框架未完整接入
 
 #### MCU-B01：反馈诊断没有进入Robot/主机状态
@@ -224,6 +238,20 @@ TEACH_STOP请求使用全轴mask，Robot状态也没有teach mask。GUI无法确
 - 下一次step返回false且不修改sample。
 - 新目标调用`trajectory_set_target()`后恢复step。
 - 不通过动作板测验证；只执行算法、消毒器、交叉编译和只读通信板测。
+
+### MCU-RB2：X_V2浮点缩放边界加固（2026-07-28已完成）
+
+范围：
+
+- `Motor/Src/X_V2.c`
+- `Tests/test_X_V2.c`
+
+验收语义：
+
+- 最大合法正负速度和位置按原wire字节打包。
+- NaN、正负Inf及刚超过整数表示范围的输入返回false。
+- 所有非法输入保持CAN发送计数不变。
+- 普通测试、严格ASan/UBSan、STM32 Debug和只读板测均通过。
 
 ### MCU-R0：问题基线测试
 
