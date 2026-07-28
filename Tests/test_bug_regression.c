@@ -48,7 +48,6 @@ uint32_t osEventFlagsSet(void *id, uint32_t f) { (void)id; return f; }
 osStatus_t osMutexAcquire(osMutexId_t id, uint32_t to) { (void)id; (void)to; return s_mutex_status; }
 osStatus_t osMutexRelease(osMutexId_t id) { (void)id; return s_mutex_status; }
 
-static bool s_robot_sync_result;
 robot_result_t robot_submit_joint_target(const robot_joint_target_t *t)
 { if (t == NULL) return ROBOT_ERR_ARGUMENT; return ROBOT_OK; }
 robot_result_t robot_request_enable(uint8_t m) { (void)m; return ROBOT_OK; }
@@ -57,7 +56,6 @@ robot_result_t robot_request_stop(void) { return ROBOT_OK; }
 robot_result_t robot_request_teach_start(uint8_t m) { (void)m; return ROBOT_OK; }
 robot_result_t robot_request_teach_stop(void) { return ROBOT_OK; }
 robot_result_t robot_request_home(uint8_t m) { (void)m; return ROBOT_ERR_NOT_CONFIGURED; }
-bool robot_sync_reference_to_actual(void) { return s_robot_sync_result; }
 
 static void test_bug_fault_state_cannot_clear(void)
 {
@@ -121,42 +119,6 @@ static void test_bug_crc_zero_payload_noise(void)
     puts("FIX-VERIFIED: zero-payload CRC differs from command byte");
 }
 
-static void test_bug_void_error_silence(void)
-{
-    printf("FIX-VERIFIED: X_V2 failures now tracked via counters\n");
-    printf("  s_motor_can_errors increments on each X_V2 failure\n");
-    printf("  s_motor_feedback_faults increments on robot_set_actual_joint failure\n");
-    printf("  TEACH path failures now set ROBOT_FAULT_TARGET_RANGE\n");
-    printf("  Available via: motor_manager_can_error_count()\n");
-    printf("                 motor_manager_feedback_fault_count()\n");
-}
-
-static void test_bug_joint_target_null(void)
-{
-    robot_result_t r = robot_submit_joint_target(NULL);
-    assert(r == ROBOT_ERR_ARGUMENT);
-}
-
-static void test_bug_robot_sync_mutex_fail(void)
-{
-    reset_fakes();
-    assert(robot_state_init((osMutexId_t)(uintptr_t)TEST_STATE_MUTEX));
-
-    for (uint8_t j = 0U; j < ROBOT_JOINT_COUNT; j++) {
-        assert(robot_set_actual_joint(j, (int32_t)(j + 1) * 1000));
-    }
-
-    s_mutex_status = osOK;
-    s_robot_sync_result = true;
-    assert(robot_sync_reference_to_actual());
-
-    s_mutex_status = osErrorResource;
-    s_robot_sync_result = false;
-    assert(!robot_sync_reference_to_actual());
-    printf("BUG-CONFIRMED: mutex failure returns false but "
-           "partial state update already committed\n");
-}
-
 static void test_joint_config_always_valid(void)
 {
     const joint_config_t *c = joint_config_get(0U);
@@ -171,9 +133,6 @@ int main(void)
     test_bug_fault_state_cannot_clear();
     test_bug_struct_padding_leak();
     test_bug_crc_zero_payload_noise();
-    test_bug_void_error_silence();
-    test_bug_joint_target_null();
-    test_bug_robot_sync_mutex_fail();
     test_joint_config_always_valid();
 
     puts("test_bug_regression: all checks passed");

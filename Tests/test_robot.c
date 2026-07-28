@@ -317,6 +317,9 @@ static void test_failure_paths_remain_fail_safe(void)
     reset_fakes();
     init_robot();
 
+    assert(robot_submit_joint_target(NULL) ==
+           ROBOT_ERR_ARGUMENT);
+
     robot_joint_target_t target = make_target(4000);
     assert(robot_submit_joint_target(&target) == ROBOT_OK);
 
