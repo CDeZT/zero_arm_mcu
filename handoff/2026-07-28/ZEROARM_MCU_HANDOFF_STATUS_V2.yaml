@@ -26,13 +26,13 @@ baseline:
   stm32:
     debug:
       status: pass
-      ram_bytes: 22976
-      flash_bytes: 55256
+      ram_bytes: 22992
+      flash_bytes: 55268
       elf: build/Debug/zero_arm_mcu.elf
     release:
       status: pass
-      ram_bytes: 22968
-      flash_bytes: 31260
+      ram_bytes: 22984
+      flash_bytes: 31280
       elf: build/Release/zero_arm_mcu.elf
   board_latest_firmware_verified: false
   mechanical_commands_sent_during_remediation: []
