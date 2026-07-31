@@ -138,6 +138,18 @@ bool X_V2_En_Control(uint8_t addr, bool state, bool sync)
     return can_SendCmd(command, sizeof(command));
 }
 
+bool X_V2_Reset_CurPos_To_Zero(uint8_t addr)
+{
+    uint8_t command[4] = {
+        addr,
+        0x0AU,
+        0x6DU,
+        X_V2_CHECK_BYTE
+    };
+
+    return can_SendCmd(command, sizeof(command));
+}
+
 bool X_V2_Traj_Pos_Control(
     uint8_t addr,
     uint8_t direction,
@@ -252,6 +264,41 @@ bool X_V2_Read_Sys_Params(
     uint8_t command[3] = {
         addr,
         parameter_code,
+        X_V2_CHECK_BYTE
+    };
+
+    return can_SendCmd(command, sizeof(command));
+}
+
+bool X_V2_Read_Protection(uint8_t addr)
+{
+    uint8_t command[3] = {
+        addr,
+        0x13U,
+        X_V2_CHECK_BYTE
+    };
+
+    return can_SendCmd(command, sizeof(command));
+}
+
+bool X_V2_Modify_Protection(
+    uint8_t addr,
+    bool save,
+    uint16_t temperature_c,
+    uint16_t current_ma,
+    uint16_t detection_time_ms)
+{
+    uint8_t command[11] = {
+        addr,
+        0xD3U,
+        0x56U,
+        (uint8_t)save,
+        (uint8_t)(temperature_c >> 8),
+        (uint8_t)temperature_c,
+        (uint8_t)(current_ma >> 8),
+        (uint8_t)current_ma,
+        (uint8_t)(detection_time_ms >> 8),
+        (uint8_t)detection_time_ms,
         X_V2_CHECK_BYTE
     };
 

@@ -27,6 +27,9 @@ typedef enum {
 
 bool X_V2_En_Control(uint8_t addr, bool state, bool sync);
 
+/* Mark current encoder position as motor zero (func 0x0A). */
+bool X_V2_Reset_CurPos_To_Zero(uint8_t addr);
+
 bool X_V2_Traj_Pos_Control(
     uint8_t addr,
     uint8_t direction,
@@ -49,3 +52,13 @@ bool X_V2_Auto_Return_Sys_Params_Timed(
 bool X_V2_Read_Sys_Params(
     uint8_t addr,
     SysParams_t parameter);
+
+/* X42S/Y42 over-temperature/over-current protection (func 0x13/0xD3). */
+bool X_V2_Read_Protection(uint8_t addr);
+
+bool X_V2_Modify_Protection(
+    uint8_t addr,
+    bool save,
+    uint16_t temperature_c,
+    uint16_t current_ma,
+    uint16_t detection_time_ms);

@@ -16,7 +16,8 @@ static void test_successful_event_results_are_not_errors(void)
     assert(!app_rtos_event_wait_failed(
         MOTOR_EVENT_SERVICE |
         MOTOR_EVENT_CAN_RX |
-        MOTOR_EVENT_TARGET));
+        MOTOR_EVENT_TARGET |
+        MOTOR_EVENT_ESTOP));
 }
 
 static void test_all_cmsis_error_results_are_rejected(void)

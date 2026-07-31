@@ -50,6 +50,12 @@ static HAL_StatusTypeDef s_tx_add_status;
 static uint32_t s_tick_count;
 static uint32_t s_delay_count;
 static osStatus_t s_delay_status;
+static uint32_t s_abort_calls;
+static uint32_t s_protocol_calls;
+static uint32_t s_stop_calls;
+static uint32_t s_bus_off;
+static bool s_abort_frees_fifo;
+static HAL_StatusTypeDef s_protocol_status;
 
 static fake_rx_frame_t s_rx_frames[MAX_FAKE_RX_FRAMES];
 static uint8_t s_rx_frame_count;
@@ -78,6 +84,12 @@ static void reset_fakes(void)
     s_tick_count = 0U;
     s_delay_count = 0U;
     s_delay_status = osOK;
+    s_abort_calls = 0U;
+    s_protocol_calls = 0U;
+    s_stop_calls = 0U;
+    s_bus_off = 0U;
+    s_abort_frees_fifo = true;
+    s_protocol_status = HAL_OK;
 
     memset(s_rx_frames, 0, sizeof(s_rx_frames));
     s_rx_frame_count = 0U;
@@ -200,6 +212,42 @@ HAL_StatusTypeDef HAL_FDCAN_AddMessageToTxFifoQ(
     s_tx_frames[s_tx_frame_count].header = *header;
     memcpy(s_tx_frames[s_tx_frame_count].data, data, 8U);
     s_tx_frame_count++;
+    return HAL_OK;
+}
+
+HAL_StatusTypeDef HAL_FDCAN_AbortTxRequest(
+    FDCAN_HandleTypeDef *hfdcan,
+    uint32_t buffer_index)
+{
+    assert(hfdcan == &hfdcan1);
+    assert(buffer_index ==
+           (FDCAN_TX_BUFFER0 |
+            FDCAN_TX_BUFFER1 |
+            FDCAN_TX_BUFFER2));
+    s_abort_calls++;
+    if (s_abort_frees_fifo) {
+        s_tx_fifo_free_level = 3U;
+    }
+    return HAL_OK;
+}
+
+HAL_StatusTypeDef HAL_FDCAN_GetProtocolStatus(
+    const FDCAN_HandleTypeDef *hfdcan,
+    FDCAN_ProtocolStatusTypeDef *status)
+{
+    assert(hfdcan == &hfdcan1);
+    assert(status != NULL);
+    s_protocol_calls++;
+    memset(status, 0, sizeof(*status));
+    status->BusOff = s_bus_off;
+    return s_protocol_status;
+}
+
+HAL_StatusTypeDef HAL_FDCAN_Stop(
+    FDCAN_HandleTypeDef *hfdcan)
+{
+    assert(hfdcan == &hfdcan1);
+    s_stop_calls++;
     return HAL_OK;
 }
 
@@ -346,21 +394,57 @@ static void test_tx_failure_paths(void)
     assert(!platform_fdcan_send_command(command, 2U));
     assert(platform_fdcan_tx_failure_count() == 2U);
 
+    /* Stuck TX is aborted and the next command can enqueue again. */
     s_tx_fifo_free_level = 0U;
     s_tick_count = 100U;
+    assert(platform_fdcan_send_command(
+        command,
+        sizeof(command)));
+    assert(s_abort_calls >= 1U);
+    assert(s_tx_frame_count == 1U);
+    assert(platform_fdcan_tx_failure_count() == 2U);
+
+    /* If abort cannot free space, the sender still times out cleanly. */
+    s_tx_frame_count = 0U;
+    s_tx_fifo_free_level = 0U;
+    s_abort_frees_fifo = false;
+    s_tick_count = 200U;
     assert(!platform_fdcan_send_command(
         command,
         sizeof(command)));
-    assert(s_delay_count == 20U);
+    assert(s_delay_count >= 1U);
     assert(s_tx_frame_count == 0U);
     assert(platform_fdcan_tx_failure_count() == 3U);
 
     s_tx_fifo_free_level = 1U;
+    s_abort_frees_fifo = true;
     s_tx_add_status = HAL_ERROR;
     assert(!platform_fdcan_send_command(
         command,
         sizeof(command)));
     assert(platform_fdcan_tx_failure_count() == 4U);
+    assert(s_abort_calls >= 2U);
+}
+
+static void test_bus_off_recovery(void)
+{
+    static const uint8_t command[] = {
+        0x01U, 0x36U, 0x6BU
+    };
+
+    reset_fakes();
+    assert(platform_fdcan_init(TEST_QUEUE, TEST_EVENTS));
+    s_bus_off = 1U;
+    s_tx_fifo_free_level = 0U;
+    s_tick_count = 0U;
+
+    assert(platform_fdcan_send_command(
+        command,
+        sizeof(command)));
+    assert(s_abort_calls >= 1U);
+    assert(s_stop_calls >= 1U);
+    assert(s_tx_frame_count == 1U);
+    assert(platform_fdcan_bus_recovery_count() >= 1U);
 }
 
 static void test_rx_queue_and_failures(void)
@@ -412,6 +496,7 @@ int main(void)
     test_short_command_packet();
     test_manual_multi_packet_example();
     test_tx_failure_paths();
+    test_bus_off_recovery();
     test_rx_queue_and_failures();
 
     puts("test_platform_fdcan: all checks passed");

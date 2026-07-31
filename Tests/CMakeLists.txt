@@ -175,6 +175,7 @@ target_include_directories(test_motor_manager PRIVATE
     ../Config
     ../Motor/Inc
     ../Motion/Inc
+    ../Platform/Inc
     ../Robot/Inc
 )
 
@@ -196,12 +197,17 @@ add_executable(test_messages
     ../Protocol/Inc/protocol.h
     ../Protocol/Src/messages.c
     ../Protocol/Src/protocol.c
+    ../Gripper/Inc/feetech_sts.h
+    ../Gripper/Src/feetech_sts.c
 )
 
 target_include_directories(test_messages PRIVATE
     Stubs
     ../App/Inc
     ../Config
+    ../Gripper/Inc
+    ../Motor/Inc
+    ../Motion/Inc
     ../Protocol/Inc
     ../Robot/Inc
 )
@@ -298,6 +304,8 @@ add_test(
 add_executable(test_platform_gpio
     test_platform_gpio.c
     ../Config/build_config.h
+    ../Config/joint_config.h
+    ../Config/joint_config.c
     ../Platform/Inc/platform_gpio.h
     ../Platform/Src/platform_gpio.c
 )
@@ -313,6 +321,10 @@ target_compile_options(test_platform_gpio PRIVATE
     -Werror
 )
 
+target_compile_definitions(test_platform_gpio PRIVATE
+    PLATFORM_GPIO_TEST=1
+)
+
 add_test(
     NAME test_platform_gpio
     COMMAND test_platform_gpio
@@ -321,13 +333,21 @@ add_test(
 add_executable(test_homing
     test_homing.c
     ../Config/build_config.h
+    ../Config/joint_config.h
+    ../Config/joint_config.c
     ../Motion/Inc/homing.h
+    ../Motion/Inc/joint_transform.h
     ../Motion/Src/homing.c
+    ../Motion/Src/joint_transform.c
 )
 
 target_include_directories(test_homing PRIVATE
+    Stubs
     ../Config
     ../Motion/Inc
+    ../Motor/Inc
+    ../Platform/Inc
+    ../Robot/Inc
 )
 
 target_compile_options(test_homing PRIVATE
@@ -406,11 +426,16 @@ add_executable(test_integration
     ../Protocol/Inc/messages.h
     ../Protocol/Src/protocol.c
     ../Protocol/Src/messages.c
+    ../Gripper/Inc/feetech_sts.h
+    ../Gripper/Src/feetech_sts.c
 )
 
 target_include_directories(test_integration PRIVATE
     Stubs
     ../Config
+    ../Gripper/Inc
+    ../Motor/Inc
+    ../Motion/Inc
     ../Protocol/Inc
     ../Robot/Inc
 )
@@ -436,6 +461,8 @@ add_executable(test_bug_regression
     ../Protocol/Inc/messages.h
     ../Protocol/Src/protocol.c
     ../Protocol/Src/messages.c
+    ../Gripper/Inc/feetech_sts.h
+    ../Gripper/Src/feetech_sts.c
     ../Robot/Inc/robot_state.h
     ../Robot/Inc/robot_types.h
     ../Robot/Src/robot_state.c
@@ -444,6 +471,9 @@ add_executable(test_bug_regression
 target_include_directories(test_bug_regression PRIVATE
     Stubs
     ../Config
+    ../Gripper/Inc
+    ../Motor/Inc
+    ../Motion/Inc
     ../Protocol/Inc
     ../Robot/Inc
 )
@@ -480,4 +510,25 @@ target_compile_options(test_protocol_robustness PRIVATE
 add_test(
     NAME test_protocol_robustness
     COMMAND test_protocol_robustness
+)
+
+add_executable(test_feetech_sts
+    test_feetech_sts.c
+    ../Gripper/Inc/feetech_sts.h
+    ../Gripper/Src/feetech_sts.c
+)
+
+target_include_directories(test_feetech_sts PRIVATE
+    ../Gripper/Inc
+)
+
+target_compile_options(test_feetech_sts PRIVATE
+    -Wall
+    -Wextra
+    -Werror
+)
+
+add_test(
+    NAME test_feetech_sts
+    COMMAND test_feetech_sts
 )

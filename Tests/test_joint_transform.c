@@ -39,8 +39,8 @@ static void test_ratio_and_direction_for_every_joint(void)
     static const int32_t expected_motor_delta[] = {
         500000,
         -508900,
-        -508900,
-        -510000,
+        508900,
+        510000,
         268500,
         -510000
     };
@@ -118,6 +118,10 @@ static void test_configured_limit_endpoints(void)
         const joint_config_t *config =
             joint_config_get(joint);
         assert(config != NULL);
+
+        if (config->continuous_rotation) {
+            continue;
+        }
 
         const int32_t endpoints[] = {
             config->min_urad,

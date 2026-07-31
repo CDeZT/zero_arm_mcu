@@ -27,7 +27,14 @@ enum {
     ROBOT_FAULT_FEEDBACK_STALE   = 1U << 8,
     /* Application resource, task, peripheral or startup transition failed. */
     ROBOT_FAULT_STARTUP          = 1U << 9,
-    ROBOT_FAULT_ALL_KNOWN        = (1U << 10) - 1U
+    /* Homing direction, switch stability or bounded seek failure. */
+    ROBOT_FAULT_HOMING           = 1U << 10,
+    ROBOT_FAULT_ESTOP            = 1U << 11,
+    ROBOT_FAULT_ALL_KNOWN        = (1U << 12) - 1U,
+    ROBOT_FAULT_RESET_REQUIRED   =
+        ROBOT_FAULT_STARTUP |
+        ROBOT_FAULT_HOMING |
+        ROBOT_FAULT_ESTOP
 };
 
 bool robot_state_init(osMutexId_t state_mutex);

@@ -18,6 +18,19 @@
 #define CMD_TEACH_START      0x07U
 #define CMD_TEACH_STOP       0x08U
 #define CMD_CLEAR_FAULT      0x09U
+#define CMD_BENCH_QUERY      0x20U
+#define CMD_BENCH_ENABLE     0x21U
+#define CMD_BENCH_DISABLE    0x22U
+#define CMD_BENCH_STOP       0x23U
+#define CMD_BENCH_MOVE_REL   0x24U
+#define CMD_BENCH_SET_ZERO   0x25U
+#define CMD_BENCH_GET_PROTECTION 0x26U
+#define CMD_BENCH_SET_PROTECTION 0x27U
+#define CMD_GRIPPER_PING      0x30U
+#define CMD_GRIPPER_READ      0x31U
+#define CMD_GRIPPER_WRITE     0x32U
+#define CMD_GRIPPER_MOVE      0x33U
+#define CMD_GRIPPER_TORQUE    0x34U
 
 typedef void (*protocol_frame_handler_t)(uint8_t command,
                                          const uint8_t *payload,

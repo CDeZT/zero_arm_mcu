@@ -42,6 +42,20 @@ typedef struct {
     uint32_t FilterID2;
 } FDCAN_FilterTypeDef;
 
+typedef struct {
+    uint32_t LastErrorCode;
+    uint32_t DataLastErrorCode;
+    uint32_t Activity;
+    uint32_t ErrorPassive;
+    uint32_t Warning;
+    uint32_t BusOff;
+    uint32_t RxESIflag;
+    uint32_t RxBRSflag;
+    uint32_t RxFDFflag;
+    uint32_t ProtocolException;
+    uint32_t TDCvalue;
+} FDCAN_ProtocolStatusTypeDef;
+
 #define FDCAN1 ((void *)(uintptr_t)0x4000A400U)
 
 #define FDCAN_STANDARD_ID                 0x00000000U
@@ -70,6 +84,9 @@ typedef struct {
 #define FDCAN_REJECT_REMOTE               0x00000003U
 #define FDCAN_RX_FIFO0                    0x00000000U
 #define FDCAN_IT_RX_FIFO0_NEW_MESSAGE     0x00000001U
+#define FDCAN_TX_BUFFER0                  0x00000001U
+#define FDCAN_TX_BUFFER1                  0x00000002U
+#define FDCAN_TX_BUFFER2                  0x00000004U
 
 extern FDCAN_HandleTypeDef hfdcan1;
 
@@ -87,6 +104,9 @@ HAL_StatusTypeDef HAL_FDCAN_ConfigGlobalFilter(
 HAL_StatusTypeDef HAL_FDCAN_Start(
     FDCAN_HandleTypeDef *hfdcan);
 
+HAL_StatusTypeDef HAL_FDCAN_Stop(
+    FDCAN_HandleTypeDef *hfdcan);
+
 HAL_StatusTypeDef HAL_FDCAN_ActivateNotification(
     FDCAN_HandleTypeDef *hfdcan,
     uint32_t active_interrupts,
@@ -99,6 +119,14 @@ HAL_StatusTypeDef HAL_FDCAN_AddMessageToTxFifoQ(
     FDCAN_HandleTypeDef *hfdcan,
     const FDCAN_TxHeaderTypeDef *header,
     const uint8_t *data);
+
+HAL_StatusTypeDef HAL_FDCAN_AbortTxRequest(
+    FDCAN_HandleTypeDef *hfdcan,
+    uint32_t buffer_index);
+
+HAL_StatusTypeDef HAL_FDCAN_GetProtocolStatus(
+    const FDCAN_HandleTypeDef *hfdcan,
+    FDCAN_ProtocolStatusTypeDef *status);
 
 uint32_t HAL_FDCAN_GetRxFifoFillLevel(
     const FDCAN_HandleTypeDef *hfdcan,

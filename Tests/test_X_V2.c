@@ -46,6 +46,16 @@ static void test_enable(void)
     expect_command(expected, sizeof(expected));
 }
 
+static void test_reset_curpos_to_zero(void)
+{
+    static const uint8_t expected[] = {
+        0x02U, 0x0AU, 0x6DU, 0x6BU
+    };
+
+    assert(X_V2_Reset_CurPos_To_Zero(2U));
+    expect_command(expected, sizeof(expected));
+}
+
 static void test_trapezoidal_position(void)
 {
     static const uint8_t expected[] = {
@@ -144,6 +154,33 @@ static void test_system_state_parameter(void)
     expect_command(system_expected, sizeof(system_expected));
 }
 
+static void test_protection_commands(void)
+{
+    static const uint8_t read_expected[] = {
+        0x03U, 0x13U, 0x6BU
+    };
+    static const uint8_t modify_expected[] = {
+        0x03U, 0xD3U, 0x56U, 0x01U,
+        0x00U, 0x64U,
+        0x0DU, 0xACU,
+        0x01U, 0x2CU,
+        0x6BU
+    };
+
+    assert(X_V2_Read_Protection(3U));
+    expect_command(read_expected, sizeof(read_expected));
+
+    assert(X_V2_Modify_Protection(
+        3U,
+        true,
+        100U,
+        3500U,
+        300U));
+    expect_command(
+        modify_expected,
+        sizeof(modify_expected));
+}
+
 static void test_invalid_parameter_is_not_sent(void)
 {
     uint32_t send_count = s_send_count;
@@ -221,10 +258,12 @@ static void test_invalid_scale_is_rejected(void)
 int main(void)
 {
     test_enable();
+    test_reset_curpos_to_zero();
     test_trapezoidal_position();
     test_stop_and_synchronize();
     test_system_parameter_codes();
     test_system_state_parameter();
+    test_protection_commands();
     test_invalid_parameter_is_not_sent();
     test_send_failure_is_reported();
     test_invalid_scale_is_rejected();

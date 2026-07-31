@@ -22,6 +22,9 @@ bool robot_get_latest_target(
 bool robot_has_active_target(void);
 bool robot_invalidate_motion_target(void);
 
+bool robot_set_motion_authorized(bool authorized);
+bool robot_motion_is_authorized(void);
+
 robot_result_t robot_request_enable(uint8_t mask);
 robot_result_t robot_request_disable(uint8_t mask);
 robot_result_t robot_request_stop(void);

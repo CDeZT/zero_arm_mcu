@@ -10,6 +10,10 @@
 bool motion_validate_target(
     const robot_joint_target_t *target);
 
+bool motion_validate_target_from_actual(
+    const robot_joint_target_t *target,
+    const int32_t actual_joint_urad[ROBOT_JOINT_COUNT]);
+
 /*
  * Converts all six joints atomically. target_generation is copied into the
  * motor snapshot so the originating PC/Robot target remains identifiable.

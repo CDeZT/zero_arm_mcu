@@ -9,5 +9,6 @@ enum {
 enum {
     MOTOR_EVENT_SERVICE = 1U << 0,
     MOTOR_EVENT_CAN_RX  = 1U << 1,
-    MOTOR_EVENT_TARGET  = 1U << 2
+    MOTOR_EVENT_TARGET  = 1U << 2,
+    MOTOR_EVENT_ESTOP   = 1U << 3
 };

@@ -4,7 +4,9 @@
 #include <stdint.h>
 
 #include "cmsis_os2.h"
+#include "build_config.h"
 #include "motor_types.h"
+#include "robot_types.h"
 
 bool motor_manager_init(
     osMessageQueueId_t service_queue,
@@ -20,6 +22,10 @@ bool motor_manager_get_latest_target(
 
 bool motor_manager_send_latest_target(void);
 
+bool motor_manager_start_position_feedback(
+    uint8_t joint_mask,
+    uint16_t period_ms);
+
 bool motor_discard_pending_target(void);
 bool motor_has_valid_target(void);
 
@@ -28,6 +34,17 @@ void motor_manager_enable_mask(
     bool enabled);
 
 void motor_manager_stop_mask(uint8_t joint_mask);
+
+/* Called only from MotorTask by the homing state machine. */
+bool motor_manager_homing_seek(
+    uint8_t joint_index,
+    uint8_t raw_direction,
+    float motor_degrees,
+    float motor_velocity_rpm,
+    uint16_t acceleration_rpm_s);
+bool motor_manager_homing_stop(uint8_t joint_index);
+bool motor_manager_homing_set_zero(uint8_t joint_index);
+bool motor_manager_homing_request_position(uint8_t joint_index);
 
 bool motor_process_all_services(void);
 void motor_process_all_can_frames(void);
@@ -46,3 +63,33 @@ bool motor_manager_get_feedback(
 uint32_t motor_manager_can_error_count(void);
 
 uint32_t motor_manager_feedback_fault_count(void);
+
+#if CONFIG_MOTOR_BENCH_TEST
+robot_result_t motor_manager_bench_query(
+    uint8_t motor_id,
+    motor_bench_state_t *state);
+
+robot_result_t motor_manager_bench_enable(uint8_t motor_id);
+robot_result_t motor_manager_bench_disable(uint8_t motor_id);
+robot_result_t motor_manager_bench_stop(uint8_t motor_id);
+
+robot_result_t motor_manager_bench_move_relative(
+    uint8_t motor_id,
+    uint8_t direction,
+    uint32_t degrees_tenths,
+    uint16_t velocity_tenths,
+    uint16_t acceleration_rpm_s);
+
+robot_result_t motor_manager_bench_set_zero(uint8_t motor_id);
+
+robot_result_t motor_manager_bench_get_protection(
+    uint8_t motor_id,
+    motor_protection_t *protection);
+
+robot_result_t motor_manager_bench_set_protection(
+    uint8_t motor_id,
+    bool save,
+    uint16_t temperature_c,
+    uint16_t current_ma,
+    uint16_t detection_time_ms);
+#endif

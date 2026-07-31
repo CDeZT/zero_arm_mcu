@@ -17,6 +17,7 @@ static osMessageQueueId_t s_service_queue;
 static osMutexId_t s_joint_target_mutex;
 static osEventFlagsId_t s_motor_events;
 static bool s_joint_target_valid;
+static bool s_motion_authorized;
 
 static robot_joint_target_t g_latest_joint_target;
 static uint32_t g_joint_target_generation;
@@ -38,6 +39,7 @@ bool robot_init(
     s_joint_target_mutex = joint_target_mutex;
     s_motor_events = motor_events;
     s_joint_target_valid = false;
+    s_motion_authorized = false;
 
     return robot_state_init(state_mutex);
 }
@@ -51,6 +53,11 @@ robot_result_t robot_submit_joint_target(
 
     if (osMutexAcquire(s_joint_target_mutex, osWaitForever) != osOK) {
         return ROBOT_ERR_STATE;
+    }
+
+    if (!s_motion_authorized) {
+        (void)osMutexRelease(s_joint_target_mutex);
+        return ROBOT_ERR_NOT_READY;
     }
 
     g_latest_joint_target = *target;
@@ -118,6 +125,38 @@ bool robot_invalidate_motion_target(void)
     return osMutexRelease(s_joint_target_mutex) == osOK;
 }
 
+bool robot_set_motion_authorized(bool authorized)
+{
+    if (osMutexAcquire(
+            s_joint_target_mutex,
+            osWaitForever) != osOK) {
+        return false;
+    }
+
+    s_motion_authorized = authorized;
+    if (!authorized) {
+        s_joint_target_valid = false;
+        g_joint_target_generation++;
+    }
+
+    return osMutexRelease(s_joint_target_mutex) == osOK;
+}
+
+bool robot_motion_is_authorized(void)
+{
+    if (osMutexAcquire(
+            s_joint_target_mutex,
+            osWaitForever) != osOK) {
+        return false;
+    }
+
+    const bool authorized = s_motion_authorized;
+    if (osMutexRelease(s_joint_target_mutex) != osOK) {
+        return false;
+    }
+    return authorized;
+}
+
 static robot_result_t robot_put_service(
     robot_service_type_t type,
     uint8_t joint_mask)
@@ -151,6 +190,9 @@ static robot_result_t robot_put_service(
 
 robot_result_t robot_request_enable(uint8_t mask)
 {
+    if (!robot_motion_is_authorized()) {
+        return ROBOT_ERR_NOT_READY;
+    }
     return robot_put_service(
         ROBOT_SERVICE_ENABLE,
         mask);
@@ -176,6 +218,9 @@ robot_result_t robot_request_stop(void)
 
 robot_result_t robot_request_teach_start(uint8_t mask)
 {
+    if (!robot_motion_is_authorized()) {
+        return ROBOT_ERR_NOT_READY;
+    }
     if (!robot_invalidate_motion_target()) {
         return ROBOT_ERR_STATE;
     }
@@ -198,6 +243,9 @@ robot_result_t robot_request_home(uint8_t mask)
     (void)mask;
     return ROBOT_ERR_NOT_CONFIGURED;
 #else
+    if (!robot_motion_is_authorized()) {
+        return ROBOT_ERR_NOT_READY;
+    }
     return robot_put_service(
         ROBOT_SERVICE_HOME,
         mask);

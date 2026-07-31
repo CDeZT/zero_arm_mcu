@@ -72,10 +72,14 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Motion/Src/trajectory.c
     Motion/Inc/homing.h
     Motion/Src/homing.c
+    Gripper/Inc/feetech_sts.h
+    Gripper/Src/feetech_sts.c
     Platform/Inc/platform_fdcan.h
     Platform/Src/platform_fdcan.c
     Platform/Inc/platform_gpio.h
     Platform/Src/platform_gpio.c
+    Platform/Inc/platform_gripper_uart.h
+    Platform/Src/platform_gripper_uart.c
 )
 
 # Add include paths
@@ -83,6 +87,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     App/Inc
     Config
+    Gripper/Inc
     Robot/Inc
     Protocol/Inc
     Platform/Inc

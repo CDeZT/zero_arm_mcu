@@ -1,6 +1,8 @@
 #include "messages.h"
 
 #include "app_events.h"
+#include "build_config.h"
+#include "motor_types.h"
 #include "protocol.h"
 #include "robot.h"
 #include "robot_state.h"
@@ -20,7 +22,14 @@ typedef enum {
     ROBOT_CALL_TEACH_STOP,
     ROBOT_CALL_HOME,
     ROBOT_CALL_CLEAR_FAULT,
-    ROBOT_CALL_SET_JOINT_TARGET
+    ROBOT_CALL_SET_JOINT_TARGET,
+    ROBOT_CALL_BENCH_QUERY,
+    ROBOT_CALL_BENCH_ENABLE,
+    ROBOT_CALL_BENCH_DISABLE,
+    ROBOT_CALL_BENCH_STOP,
+    ROBOT_CALL_BENCH_MOVE,
+    ROBOT_CALL_BENCH_GET_PROTECTION,
+    ROBOT_CALL_BENCH_SET_PROTECTION
 } robot_call_t;
 
 static const osMessageQueueId_t TEST_HOST_QUEUE =
@@ -40,6 +49,15 @@ static uint8_t s_robot_mask;
 static robot_result_t s_robot_result;
 static bool s_robot_clear_fault_result;
 static robot_joint_target_t s_robot_target;
+static motor_bench_state_t s_bench_state;
+static uint8_t s_bench_motor_id;
+static uint8_t s_bench_direction;
+static uint32_t s_bench_degrees_tenths;
+static uint16_t s_bench_velocity_tenths;
+static uint16_t s_bench_acceleration;
+static motor_protection_t s_bench_protection;
+static bool s_bench_save;
+static bool s_motion_target_valid;
 
 static uint32_t s_decoded_count;
 static uint8_t s_decoded_command;
@@ -60,6 +78,23 @@ static void reset_fakes(void)
     s_robot_clear_fault_result = true;
     memset(&s_robot_target, 0,
            sizeof(s_robot_target));
+    memset(&s_bench_state, 0, sizeof(s_bench_state));
+    s_bench_state.motor_id = 1U;
+    s_bench_state.online = 1U;
+    s_bench_state.position_urad = 12345;
+    s_bench_motor_id = 0U;
+    s_bench_direction = 0U;
+    s_bench_degrees_tenths = 0U;
+    s_bench_velocity_tenths = 0U;
+    s_bench_acceleration = 0U;
+    s_bench_protection = (motor_protection_t) {
+        .motor_id = 3U,
+        .temperature_c = 100U,
+        .current_ma = 3500U,
+        .detection_time_ms = 300U
+    };
+    s_bench_save = false;
+    s_motion_target_valid = true;
     s_decoded_count = 0U;
     s_decoded_command = 0U;
     memset(s_decoded_payload, 0,
@@ -165,6 +200,104 @@ robot_result_t robot_submit_joint_target(
     s_robot_call =
         ROBOT_CALL_SET_JOINT_TARGET;
     s_robot_target = *target;
+    return s_robot_result;
+}
+
+robot_result_t motor_manager_bench_query(
+    uint8_t motor_id,
+    motor_bench_state_t *state)
+{
+    s_robot_call = ROBOT_CALL_BENCH_QUERY;
+    s_bench_motor_id = motor_id;
+    if (state != NULL) {
+        *state = s_bench_state;
+        state->motor_id = motor_id;
+    }
+    return s_robot_result;
+}
+
+robot_result_t motor_manager_bench_enable(uint8_t motor_id)
+{
+    s_robot_call = ROBOT_CALL_BENCH_ENABLE;
+    s_bench_motor_id = motor_id;
+    return s_robot_result;
+}
+
+robot_result_t motor_manager_bench_disable(uint8_t motor_id)
+{
+    s_robot_call = ROBOT_CALL_BENCH_DISABLE;
+    s_bench_motor_id = motor_id;
+    return s_robot_result;
+}
+
+robot_result_t motor_manager_bench_stop(uint8_t motor_id)
+{
+    s_robot_call = ROBOT_CALL_BENCH_STOP;
+    s_bench_motor_id = motor_id;
+    return s_robot_result;
+}
+
+robot_result_t motor_manager_bench_move_relative(
+    uint8_t motor_id,
+    uint8_t direction,
+    uint32_t degrees_tenths,
+    uint16_t velocity_tenths,
+    uint16_t acceleration_rpm_s)
+{
+    s_robot_call = ROBOT_CALL_BENCH_MOVE;
+    s_bench_motor_id = motor_id;
+    s_bench_direction = direction;
+    s_bench_degrees_tenths = degrees_tenths;
+    s_bench_velocity_tenths = velocity_tenths;
+    s_bench_acceleration = acceleration_rpm_s;
+    return s_robot_result;
+}
+
+robot_result_t motor_manager_bench_set_zero(uint8_t motor_id)
+{
+    s_robot_call = ROBOT_CALL_BENCH_ENABLE;
+    s_bench_motor_id = motor_id;
+    return s_robot_result;
+}
+
+bool motion_validate_target_from_actual(
+    const robot_joint_target_t *target,
+    const int32_t actual_joint_urad[ROBOT_JOINT_COUNT])
+{
+    assert(target != NULL);
+    assert(actual_joint_urad != NULL);
+    return s_motion_target_valid;
+}
+
+robot_result_t motor_manager_bench_get_protection(
+    uint8_t motor_id,
+    motor_protection_t *protection)
+{
+    s_robot_call = ROBOT_CALL_BENCH_GET_PROTECTION;
+    s_bench_motor_id = motor_id;
+    if (protection != NULL) {
+        *protection = s_bench_protection;
+        protection->motor_id = motor_id;
+    }
+    return s_robot_result;
+}
+
+robot_result_t motor_manager_bench_set_protection(
+    uint8_t motor_id,
+    bool save,
+    uint16_t temperature_c,
+    uint16_t current_ma,
+    uint16_t detection_time_ms)
+{
+    s_robot_call = ROBOT_CALL_BENCH_SET_PROTECTION;
+    s_bench_motor_id = motor_id;
+    s_bench_save = save;
+    s_bench_protection = (motor_protection_t) {
+        .motor_id = motor_id,
+        .temperature_c = temperature_c,
+        .current_ma = current_ma,
+        .detection_time_ms = detection_time_ms
+    };
     return s_robot_result;
 }
 
@@ -473,6 +606,109 @@ static void test_unknown_command(void)
         ROBOT_ERR_NOT_IMPLEMENTED);
 }
 
+static void test_bench_commands(void)
+{
+    uint8_t motor_id = 1U;
+    uint8_t move_payload[10] = {
+        0x01U,
+        0x01U,
+        0x00U, 0x00U, 0x2AU, 0x30U,
+        0x00U, 0x64U,
+        0x00U, 0x32U
+    };
+    uint8_t protection_payload[8] = {
+        0x03U, 0x01U,
+        0x00U, 0x64U,
+        0x0DU, 0xACU,
+        0x01U, 0x2CU
+    };
+
+    reset_fakes();
+    assert(messages_init(
+        TEST_HOST_QUEUE,
+        TEST_HOST_EVENTS));
+    messages_on_frame(CMD_BENCH_QUERY, &motor_id, 1U);
+    assert(s_robot_call == ROBOT_CALL_BENCH_QUERY);
+    assert(s_bench_motor_id == 1U);
+    assert(s_queue_put_count == 1U);
+
+    protocol_init(decoded_handler);
+    for (uint16_t i = 0U; i < s_queued_frame.length; i++) {
+        protocol_parse_byte(s_queued_frame.data[i]);
+    }
+    assert(s_decoded_command == CMD_BENCH_QUERY);
+    assert(s_decoded_length == sizeof(motor_bench_state_t));
+
+    reset_fakes();
+    messages_on_frame(
+        CMD_BENCH_GET_PROTECTION,
+        &protection_payload[0],
+        1U);
+    assert(s_robot_call ==
+           ROBOT_CALL_BENCH_GET_PROTECTION);
+    assert(s_bench_motor_id == 3U);
+    protocol_init(decoded_handler);
+    for (uint16_t i = 0U;
+         i < s_queued_frame.length;
+         i++) {
+        protocol_parse_byte(s_queued_frame.data[i]);
+    }
+    assert(s_decoded_command ==
+           CMD_BENCH_GET_PROTECTION);
+    assert(s_decoded_length == 7U);
+    assert(s_decoded_payload[0] == 3U);
+    assert(s_decoded_payload[3] == 0x0DU);
+    assert(s_decoded_payload[4] == 0xACU);
+
+    reset_fakes();
+    messages_on_frame(
+        CMD_BENCH_SET_PROTECTION,
+        protection_payload,
+        sizeof(protection_payload));
+    assert(s_robot_call ==
+           ROBOT_CALL_BENCH_SET_PROTECTION);
+    assert(s_bench_motor_id == 3U);
+    assert(s_bench_save);
+    assert(s_bench_protection.temperature_c == 100U);
+    assert(s_bench_protection.current_ma == 3500U);
+    assert(s_bench_protection.detection_time_ms == 300U);
+    expect_result_response(
+        CMD_BENCH_SET_PROTECTION,
+        ROBOT_OK);
+
+    reset_fakes();
+    messages_on_frame(CMD_BENCH_ENABLE, &motor_id, 1U);
+    assert(s_robot_call == ROBOT_CALL_BENCH_ENABLE);
+    expect_result_response(CMD_BENCH_ENABLE, ROBOT_OK);
+
+    reset_fakes();
+    messages_on_frame(CMD_BENCH_MOVE_REL, move_payload, 10U);
+    assert(s_robot_call == ROBOT_CALL_BENCH_MOVE);
+    assert(s_bench_motor_id == 1U);
+    assert(s_bench_direction == 1U);
+    assert(s_bench_degrees_tenths == 10800U);
+    assert(s_bench_velocity_tenths == 100U);
+    assert(s_bench_acceleration == 50U);
+    expect_result_response(CMD_BENCH_MOVE_REL, ROBOT_OK);
+
+    reset_fakes();
+    messages_on_frame(CMD_BENCH_STOP, &motor_id, 1U);
+    assert(s_robot_call == ROBOT_CALL_BENCH_STOP);
+    expect_result_response(CMD_BENCH_STOP, ROBOT_OK);
+
+    reset_fakes();
+    messages_on_frame(CMD_BENCH_DISABLE, &motor_id, 1U);
+    assert(s_robot_call == ROBOT_CALL_BENCH_DISABLE);
+    expect_result_response(CMD_BENCH_DISABLE, ROBOT_OK);
+
+    reset_fakes();
+    messages_on_frame(CMD_BENCH_MOVE_REL, move_payload, 9U);
+    assert(s_robot_call == ROBOT_CALL_NONE);
+    expect_result_response(
+        CMD_BENCH_MOVE_REL,
+        ROBOT_ERR_ARGUMENT);
+}
+
 static void write_be_u16(
     uint8_t *output,
     uint16_t value)
@@ -580,6 +816,17 @@ static void test_set_joint_target_validation(void)
     expect_result_response(
         CMD_SET_JOINT_TARGET,
         ROBOT_ERR_ARGUMENT);
+
+    reset_fakes();
+    s_motion_target_valid = false;
+    messages_on_frame(
+        CMD_SET_JOINT_TARGET,
+        payload,
+        sizeof(payload));
+    assert(s_robot_call == ROBOT_CALL_NONE);
+    expect_result_response(
+        CMD_SET_JOINT_TARGET,
+        ROBOT_ERR_RANGE);
 }
 
 int main(void)
@@ -596,6 +843,7 @@ int main(void)
     test_clear_fault_command();
     test_set_joint_target();
     test_set_joint_target_validation();
+    test_bench_commands();
     test_unknown_command();
 
     puts("test_messages: all checks passed");

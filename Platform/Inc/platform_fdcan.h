@@ -22,3 +22,4 @@ void platform_fdcan_on_rx_fifo0(void);
 uint32_t platform_fdcan_rx_drop_count(void);
 uint32_t platform_fdcan_rx_error_count(void);
 uint32_t platform_fdcan_tx_failure_count(void);
+uint32_t platform_fdcan_bus_recovery_count(void);

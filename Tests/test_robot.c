@@ -111,6 +111,7 @@ static void init_robot(void)
         TEST_STATE_MUTEX,
         TEST_TARGET_MUTEX,
         TEST_MOTOR_EVENTS));
+    assert(robot_set_motion_authorized(true));
 }
 
 static robot_joint_target_t make_target(int32_t base)
@@ -336,6 +337,41 @@ static void test_failure_paths_remain_fail_safe(void)
     assert(s_queued_service_count == 0U);
 }
 
+static void test_startup_and_estop_authorization_latch(void)
+{
+    reset_fakes();
+    assert(robot_init(
+        TEST_SERVICE_QUEUE,
+        TEST_STATE_MUTEX,
+        TEST_TARGET_MUTEX,
+        TEST_MOTOR_EVENTS));
+
+    robot_joint_target_t target = make_target(2500);
+    assert(!robot_motion_is_authorized());
+    assert(robot_submit_joint_target(&target) ==
+           ROBOT_ERR_NOT_READY);
+    assert(robot_request_enable(0x01U) ==
+           ROBOT_ERR_NOT_READY);
+    assert(robot_request_teach_start(0x01U) ==
+           ROBOT_ERR_NOT_READY);
+    assert(s_queued_service_count == 0U);
+
+    assert(robot_set_motion_authorized(true));
+    assert(robot_motion_is_authorized());
+    assert(robot_submit_joint_target(&target) == ROBOT_OK);
+    assert(robot_has_active_target());
+
+    assert(robot_set_motion_authorized(false));
+    assert(!robot_motion_is_authorized());
+    assert(!robot_has_active_target());
+    assert(robot_request_enable(0x01U) ==
+           ROBOT_ERR_NOT_READY);
+
+    /* Safety operations remain available during a lockout. */
+    assert(robot_request_disable(0x01U) == ROBOT_OK);
+    assert(robot_request_stop() == ROBOT_OK);
+}
+
 static void test_mutex_release_failures_are_propagated(void)
 {
     reset_fakes();
@@ -378,6 +414,7 @@ int main(void)
 {
     test_init_and_teaching_state();
     test_target_snapshot_and_explicit_invalidation();
+    test_startup_and_estop_authorization_latch();
     test_service_types_masks_and_priorities();
     test_stop_and_teach_start_invalidate_target();
     test_sync_reference_to_actual_restores_safe_target();

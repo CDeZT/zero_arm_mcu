@@ -25,7 +25,10 @@ typedef enum {
     X_CALL_STOP,
     X_CALL_AUTO_RETURN,
     X_CALL_POSITION,
-    X_CALL_SYNCHRONIZE
+    X_CALL_SYNCHRONIZE,
+    X_CALL_SET_ZERO,
+    X_CALL_READ_PROTECTION,
+    X_CALL_MODIFY_PROTECTION
 } x_call_type_t;
 
 typedef struct {
@@ -41,6 +44,10 @@ typedef struct {
     float velocity_rpm;
     float position_degrees;
     uint8_t motion_mode;
+    uint16_t temperature_c;
+    uint16_t current_ma;
+    uint16_t detection_time_ms;
+    bool save;
 } x_call_t;
 
 static const osMessageQueueId_t TEST_SERVICE_QUEUE =
@@ -80,6 +87,13 @@ static uint32_t s_mutex_acquire_count;
 static uint32_t s_mutex_release_count;
 static uint32_t s_event_flags;
 static uint32_t s_robot_fault_flags;
+static bool s_motion_authorized;
+static uint32_t s_tick_ms;
+static osStatus_t s_delay_status;
+static bool s_read_params_result;
+static uint32_t s_read_params_count;
+static uint8_t s_read_params_motor_id;
+static SysParams_t s_read_params_last;
 
 static can_frame_t make_frame(
     uint8_t motor_id,
@@ -114,6 +128,85 @@ static void reset_fakes(void)
     s_mutex_release_count = 0U;
     s_event_flags = 0U;
     s_robot_fault_flags = ROBOT_FAULT_NONE;
+    s_motion_authorized = true;
+    s_tick_ms = 0U;
+    s_delay_status = osOK;
+    s_read_params_result = true;
+    s_read_params_count = 0U;
+    s_read_params_motor_id = 0U;
+    s_read_params_last = S_VBUS;
+}
+
+uint32_t osKernelGetTickCount(void)
+{
+    return s_tick_ms;
+}
+
+osStatus_t osDelay(uint32_t ticks)
+{
+    s_tick_ms += ticks;
+    return s_delay_status;
+}
+
+bool robot_get_state(robot_state_t *output)
+{
+    assert(output != NULL);
+    memset(output, 0, sizeof(*output));
+    output->run_state = ROBOT_STATE_READY;
+    output->fault_flags = s_robot_fault_flags;
+    return true;
+}
+
+bool X_V2_Read_Sys_Params(
+    uint8_t addr,
+    SysParams_t parameter)
+{
+    s_read_params_count++;
+    s_read_params_motor_id = addr;
+    s_read_params_last = parameter;
+    return s_read_params_result;
+}
+
+bool robot_motion_is_authorized(void)
+{
+    return s_motion_authorized;
+}
+
+bool homing_start(uint8_t joint_mask)
+{
+    (void)joint_mask;
+    return true;
+}
+
+bool X_V2_Read_Protection(uint8_t addr)
+{
+    assert(s_x_call_count < MAX_X_CALLS);
+    int32_t call_index = s_x_call_count;
+    s_x_calls[s_x_call_count++] = (x_call_t) {
+        .type = X_CALL_READ_PROTECTION,
+        .motor_id = addr
+    };
+    return call_index != s_x_failure_call;
+}
+
+bool X_V2_Modify_Protection(
+    uint8_t addr,
+    bool save,
+    uint16_t temperature_c,
+    uint16_t current_ma,
+    uint16_t detection_time_ms)
+{
+    assert(s_x_call_count < MAX_X_CALLS);
+    int32_t call_index = s_x_call_count;
+    s_x_calls[s_x_call_count++] = (x_call_t) {
+        .type = X_CALL_MODIFY_PROTECTION,
+        .motor_id = addr,
+        .save = save,
+        .temperature_c = temperature_c,
+        .current_ma = current_ma,
+        .detection_time_ms = detection_time_ms
+    };
+    return call_index != s_x_failure_call;
 }
 
 bool robot_has_active_target(void)
@@ -212,6 +305,20 @@ uint32_t osEventFlagsSet(
     assert(event_flags_id == TEST_EVENTS);
     s_event_flags |= flags;
     return s_event_flags;
+}
+
+bool X_V2_Reset_CurPos_To_Zero(uint8_t addr)
+{
+    assert(s_x_call_count < MAX_X_CALLS);
+    s_x_calls[s_x_call_count++] = (x_call_t) {
+        .type = X_CALL_SET_ZERO,
+        .motor_id = addr
+    };
+    if (s_x_failure_call >= 0 &&
+        s_x_call_count == (uint8_t)(s_x_failure_call + 1)) {
+        return false;
+    }
+    return true;
 }
 
 bool X_V2_En_Control(
@@ -507,12 +614,12 @@ static void test_teach_stop_stops_feedback_and_syncs_reference(void)
     assert(s_robot_run_state == ROBOT_STATE_READY);
 }
 
-static void test_six_axis_target_and_one_synchronize(void)
+static void test_six_axis_target_executes_immediately(void)
 {
     static const int32_t motor_urad[] = {
         3141593,
         -1570796,
-        0,
+        10,
         100000,
         -200000,
         300000
@@ -533,7 +640,7 @@ static void test_six_axis_target_and_one_synchronize(void)
     s_x_call_count = 0U;
     assert(motor_manager_send_latest_target());
     assert(s_x_call_count ==
-           ROBOT_JOINT_COUNT + 1U);
+           ROBOT_JOINT_COUNT);
 
     for (uint8_t joint = 0U;
          joint < ROBOT_JOINT_COUNT;
@@ -552,8 +659,8 @@ static void test_six_axis_target_and_one_synchronize(void)
                     1U : 0U));
         assert(call->acceleration == 100U);
         assert(call->deceleration == 100U);
-        assert(call->motion_mode == 1U);
-        assert(call->sync);
+        assert(call->motion_mode == 2U);
+        assert(!call->sync);
 
         int64_t magnitude = motor_urad[joint];
         if (magnitude < 0) {
@@ -579,14 +686,9 @@ static void test_six_axis_target_and_one_synchronize(void)
                0.001f);
     }
 
-    const x_call_t *synchronize =
-        &s_x_calls[ROBOT_JOINT_COUNT];
-    assert(synchronize->type ==
-           X_CALL_SYNCHRONIZE);
-    assert(synchronize->motor_id == 0U);
 }
 
-static void test_position_failure_suppresses_synchronize(void)
+static void test_position_failure_stops_target_batch(void)
 {
     reset_fakes();
     init_manager();
@@ -654,6 +756,13 @@ static void test_feedback_parsing(void)
     static const uint8_t combined_status[] = {
         0x3CU, 0x03U, 0x0BU, 0x6BU
     };
+    static const uint8_t protection[] = {
+        0x13U,
+        0x00U, 0x64U,
+        0x0DU, 0xACU,
+        0x01U, 0x2CU,
+        0x6BU
+    };
     static const uint8_t ack[] = {
         0xF3U, 0x02U, 0x6BU
     };
@@ -700,6 +809,15 @@ static void test_feedback_parsing(void)
     assert(motor_manager_on_can_frame(&frame));
     assert(motor_manager_get_feedback(1U, &feedback));
     assert(feedback.status == 0x030BU);
+
+    frame = make_frame(
+        1U, 0U, protection, sizeof(protection));
+    assert(motor_manager_on_can_frame(&frame));
+    assert(motor_manager_get_feedback(1U, &feedback));
+    assert(feedback.protection_temperature_c == 100U);
+    assert(feedback.protection_current_ma == 3500U);
+    assert(feedback.protection_time_ms == 300U);
+    assert(feedback.protection_sample_count == 1U);
 
     frame = make_frame(2U, 0U, ack, sizeof(ack));
     assert(motor_manager_on_can_frame(&frame));
@@ -855,6 +973,193 @@ static void test_position_magnitude_clamps_to_i32(void)
     assert(feedback.position_urad == INT32_MIN);
 }
 
+static void test_bench_query_and_relative_move(void)
+{
+    static const uint8_t position[] = {
+        0x36U, 0x00U,
+        0x00U, 0x00U, 0x00U, 0x10U,
+        0x6BU
+    };
+    motor_bench_state_t state = {0};
+
+    reset_fakes();
+    init_manager();
+
+    s_can_frames[0] = make_frame(
+        1U,
+        0U,
+        position,
+        sizeof(position));
+    s_can_count = 1U;
+
+    assert(motor_manager_bench_query(1U, &state) ==
+           ROBOT_OK);
+    assert(s_read_params_count >= 1U);
+    assert(s_read_params_motor_id == 1U);
+    assert(state.motor_id == 1U);
+    assert(state.online == 1U);
+    assert(state.position_urad == 27925);
+    assert(state.can_tx_errors == 0U);
+
+    s_x_call_count = 0U;
+    assert(motor_manager_bench_move_relative(
+               1U,
+               0U,
+               10800U,
+               100U,
+               50U) == ROBOT_OK);
+    assert(s_x_call_count == 1U);
+    assert(s_x_calls[0].type == X_CALL_POSITION);
+    assert(s_x_calls[0].motor_id == 1U);
+    assert(s_x_calls[0].direction == 0U);
+    assert(s_x_calls[0].motion_mode == 2U);
+    assert(!s_x_calls[0].sync);
+    assert(fabsf(s_x_calls[0].position_degrees - 1080.0f) <
+           0.001f);
+    assert(fabsf(s_x_calls[0].velocity_rpm - 10.0f) <
+           0.001f);
+    assert(!s_robot_target_active);
+    assert(!motor_has_valid_target());
+
+    assert(motor_manager_bench_move_relative(
+               1U,
+               0U,
+               5400001U,
+               100U,
+               50U) == ROBOT_ERR_RANGE);
+    assert(motor_manager_bench_move_relative(
+               1U,
+               0U,
+               100U,
+               15001U,
+               50U) == ROBOT_ERR_RANGE);
+    assert(motor_manager_bench_enable(0U) ==
+           ROBOT_ERR_ARGUMENT);
+    assert(motor_manager_bench_enable(7U) ==
+           ROBOT_ERR_ARGUMENT);
+
+    s_x_call_count = 0U;
+    assert(motor_manager_bench_set_zero(1U) == ROBOT_OK);
+    assert(s_x_call_count == 1U);
+    assert(s_x_calls[0].type == X_CALL_SET_ZERO);
+    assert(s_x_calls[0].motor_id == 1U);
+
+    s_x_call_count = 0U;
+    assert(motor_manager_bench_enable(1U) == ROBOT_OK);
+    assert(s_x_calls[0].type == X_CALL_ENABLE);
+    assert(s_x_calls[0].enabled);
+    assert(motor_manager_bench_stop(1U) == ROBOT_OK);
+    assert(s_x_calls[1].type == X_CALL_STOP);
+    assert(motor_manager_bench_disable(1U) == ROBOT_OK);
+    assert(s_x_calls[2].type == X_CALL_ENABLE);
+    assert(!s_x_calls[2].enabled);
+
+    s_motion_authorized = false;
+    s_x_call_count = 0U;
+    assert(motor_manager_bench_enable(1U) ==
+           ROBOT_ERR_NOT_READY);
+    assert(motor_manager_bench_move_relative(
+               1U,
+               0U,
+               100U,
+               100U,
+               50U) == ROBOT_ERR_NOT_READY);
+    assert(motor_manager_bench_set_zero(1U) ==
+           ROBOT_ERR_NOT_READY);
+    assert(s_x_call_count == 0U);
+
+    /* STOP and DISABLE must still work while motion is locked out. */
+    assert(motor_manager_bench_stop(1U) == ROBOT_OK);
+    assert(motor_manager_bench_disable(1U) == ROBOT_OK);
+}
+
+static void test_bench_protection_configuration(void)
+{
+    static const uint8_t protection_reply[] = {
+        0x13U,
+        0x00U, 0x64U,
+        0x0DU, 0xACU,
+        0x01U, 0x2CU,
+        0x6BU
+    };
+    motor_protection_t protection = {0};
+
+    reset_fakes();
+    init_manager();
+
+    s_can_frames[0] = make_frame(
+        3U,
+        0U,
+        protection_reply,
+        sizeof(protection_reply));
+    s_can_count = 1U;
+
+    assert(motor_manager_bench_get_protection(
+               3U,
+               &protection) == ROBOT_OK);
+    assert(s_x_calls[0].type ==
+           X_CALL_READ_PROTECTION);
+    assert(s_x_calls[0].motor_id == 3U);
+    assert(protection.motor_id == 3U);
+    assert(protection.temperature_c == 100U);
+    assert(protection.current_ma == 3500U);
+    assert(protection.detection_time_ms == 300U);
+
+    s_x_call_count = 0U;
+    assert(motor_manager_bench_set_protection(
+               3U,
+               true,
+               100U,
+               3500U,
+               300U) == ROBOT_OK);
+    assert(s_x_calls[0].type ==
+           X_CALL_MODIFY_PROTECTION);
+    assert(s_x_calls[0].save);
+    assert(s_x_calls[0].temperature_c == 100U);
+    assert(s_x_calls[0].current_ma == 3500U);
+    assert(s_x_calls[0].detection_time_ms == 300U);
+
+    assert(motor_manager_bench_set_protection(
+               3U,
+               true,
+               100U,
+               499U,
+               300U) == ROBOT_ERR_RANGE);
+}
+
+static void test_bench_query_timeout(void)
+{
+    motor_bench_state_t state = {0};
+    static const uint8_t ack[] = {
+        0xF3U, 0x02U, 0x6BU
+    };
+
+    reset_fakes();
+    init_manager();
+    s_can_count = 0U;
+
+    assert(motor_manager_bench_query(1U, &state) ==
+           ROBOT_ERR_IO);
+    assert(state.motor_id == 1U);
+    assert(state.online == 0U);
+    assert(s_tick_ms >= MOTOR_BENCH_QUERY_TIMEOUT_MS);
+
+    /* Sticky online without a new position sample must fail. */
+    s_can_frames[0] = make_frame(1U, 0U, ack, sizeof(ack));
+    s_can_count = 1U;
+    s_can_index = 0U;
+    s_tick_ms = 0U;
+    assert(motor_manager_bench_query(1U, &state) ==
+           ROBOT_ERR_IO);
+    assert(state.online == 0U);
+
+    s_read_params_result = false;
+    assert(motor_manager_bench_query(1U, &state) ==
+           ROBOT_ERR_IO);
+    assert((s_robot_fault_flags &
+            ROBOT_FAULT_MOTOR_TX) != 0U);
+}
+
 static void test_can_error_counter_tracks_failures(void)
 {
     reset_fakes();
@@ -881,19 +1186,51 @@ static void test_can_error_counter_tracks_failures(void)
     assert(motor_manager_can_error_count() == 1U);
 }
 
+static void test_position_feedback_subscription(void)
+{
+    reset_fakes();
+    init_manager();
+
+    assert(!motor_manager_start_position_feedback(
+        0U, 20U));
+    assert(!motor_manager_start_position_feedback(
+        0x40U, 20U));
+    assert(!motor_manager_start_position_feedback(
+        0x01U, 0U));
+
+    assert(motor_manager_start_position_feedback(
+        0x1FU, 20U));
+    assert(s_x_call_count == 5U);
+    for (uint8_t index = 0U;
+         index < 5U;
+         index++) {
+        assert(s_x_calls[index].type ==
+               X_CALL_AUTO_RETURN);
+        assert(s_x_calls[index].motor_id ==
+               (uint8_t)(index + 1U));
+        assert(s_x_calls[index].parameter ==
+               S_CPOS);
+        assert(s_x_calls[index].period_ms == 20U);
+    }
+}
+
 int main(void)
 {
     test_init_and_target_snapshot();
     test_service_mask_and_stop_invalidation();
     test_teach_start_stops_selected_axes_and_releases_them();
     test_teach_stop_stops_feedback_and_syncs_reference();
-    test_six_axis_target_and_one_synchronize();
-    test_position_failure_suppresses_synchronize();
+    test_six_axis_target_executes_immediately();
+    test_position_failure_stops_target_batch();
     test_feedback_parsing();
     test_queued_frames_and_rejections();
     test_queue_drains_are_bounded();
     test_position_magnitude_clamps_to_i32();
+    test_bench_query_and_relative_move();
+    test_bench_protection_configuration();
+    test_bench_query_timeout();
     test_can_error_counter_tracks_failures();
+    test_position_feedback_subscription();
 
     puts("test_motor_manager: all checks passed");
     return 0;

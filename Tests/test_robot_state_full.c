@@ -114,7 +114,9 @@ static void test_fault_taxonomy_is_unique_and_compatible(void)
         ROBOT_FAULT_CAN_RX_DROP,
         ROBOT_FAULT_SERVICE_PARTIAL,
         ROBOT_FAULT_FEEDBACK_STALE,
-        ROBOT_FAULT_STARTUP
+        ROBOT_FAULT_STARTUP,
+        ROBOT_FAULT_HOMING,
+        ROBOT_FAULT_ESTOP
     };
 
     assert(ROBOT_FAULT_TARGET_RANGE == (1U << 0));
@@ -166,6 +168,27 @@ static void test_clear_fault_preserves_non_fault_state(void)
     assert(robot_clear_fault(UINT32_MAX));
     assert(robot_get_state(&state));
     assert(state.run_state == ROBOT_STATE_READY);
+}
+
+static void test_reset_required_faults_cannot_be_cleared(void)
+{
+    reset_fakes();
+    assert(robot_state_init(TEST_MUTEX));
+
+    assert(robot_set_fault(
+        ROBOT_FAULT_STARTUP |
+        ROBOT_FAULT_HOMING |
+        ROBOT_FAULT_ESTOP |
+        ROBOT_FAULT_HOST_TX));
+    assert(robot_clear_fault(UINT32_MAX));
+
+    robot_state_t state;
+    assert(robot_get_state(&state));
+    assert(state.fault_flags ==
+           (ROBOT_FAULT_STARTUP |
+            ROBOT_FAULT_HOMING |
+            ROBOT_FAULT_ESTOP));
+    assert(state.run_state == ROBOT_STATE_FAULT);
 }
 
 static void test_run_state_boundaries(void)
@@ -255,6 +278,7 @@ int main(void)
     test_fault_management();
     test_fault_taxonomy_is_unique_and_compatible();
     test_clear_fault_preserves_non_fault_state();
+    test_reset_required_faults_cannot_be_cleared();
     test_run_state_boundaries();
     test_actual_joint_boundaries();
     test_update_target_null();

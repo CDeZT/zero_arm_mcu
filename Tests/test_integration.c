@@ -1,4 +1,5 @@
 #include "messages.h"
+#include "motor_types.h"
 #include "protocol.h"
 #include "robot.h"
 #include "robot_state.h"
@@ -68,6 +69,13 @@ bool robot_get_state(robot_state_t *out)
     *out = s_fake_state;
     return true;
 }
+bool motion_validate_target_from_actual(
+    const robot_joint_target_t *target,
+    const int32_t actual_joint_urad[ROBOT_JOINT_COUNT])
+{
+    return target != NULL &&
+           actual_joint_urad != NULL;
+}
 bool robot_set_fault(uint32_t fault_flags)
 {
     s_fake_state.fault_flags |= fault_flags;
@@ -90,6 +98,90 @@ bool robot_clear_fault(uint32_t f)
 }
 robot_result_t robot_submit_joint_target(const robot_joint_target_t *t)
 { s_last_target = *t; return s_joint_target_result; }
+
+robot_result_t motor_manager_bench_query(
+    uint8_t motor_id,
+    motor_bench_state_t *state)
+{
+    if (state == NULL) {
+        return ROBOT_ERR_ARGUMENT;
+    }
+    memset(state, 0, sizeof(*state));
+    state->motor_id = motor_id;
+    state->online = 1U;
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_enable(uint8_t motor_id)
+{
+    (void)motor_id;
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_disable(uint8_t motor_id)
+{
+    (void)motor_id;
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_stop(uint8_t motor_id)
+{
+    (void)motor_id;
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_move_relative(
+    uint8_t motor_id,
+    uint8_t direction,
+    uint32_t degrees_tenths,
+    uint16_t velocity_tenths,
+    uint16_t acceleration_rpm_s)
+{
+    (void)motor_id;
+    (void)direction;
+    (void)degrees_tenths;
+    (void)velocity_tenths;
+    (void)acceleration_rpm_s;
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_set_zero(uint8_t motor_id)
+{
+    (void)motor_id;
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_get_protection(
+    uint8_t motor_id,
+    motor_protection_t *protection)
+{
+    if (protection == NULL) {
+        return ROBOT_ERR_ARGUMENT;
+    }
+
+    *protection = (motor_protection_t) {
+        .motor_id = motor_id,
+        .temperature_c = 100U,
+        .current_ma = 2000U,
+        .detection_time_ms = 100U
+    };
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_set_protection(
+    uint8_t motor_id,
+    bool save,
+    uint16_t temperature_c,
+    uint16_t current_ma,
+    uint16_t detection_time_ms)
+{
+    (void)motor_id;
+    (void)save;
+    (void)temperature_c;
+    (void)current_ma;
+    (void)detection_time_ms;
+    return ROBOT_OK;
+}
 
 static uint8_t s_decoded_cmd;
 static uint8_t s_decoded_len;

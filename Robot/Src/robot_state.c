@@ -128,7 +128,9 @@ bool robot_clear_fault(uint32_t fault_flags)
         return false;
     }
 
-    s_robot_state.fault_flags &= ~fault_flags;
+    const uint32_t clearable_faults =
+        fault_flags & ~ROBOT_FAULT_RESET_REQUIRED;
+    s_robot_state.fault_flags &= ~clearable_faults;
     if (s_robot_state.fault_flags == ROBOT_FAULT_NONE &&
         s_robot_state.run_state == ROBOT_STATE_FAULT) {
         s_robot_state.run_state = ROBOT_STATE_READY;

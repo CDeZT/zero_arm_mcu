@@ -22,7 +22,17 @@ bool motion_validate_target(
         }
     }
 
-    return true;
+    return joint_config_targets_satisfy_interlocks(target->joint_urad);
+}
+
+bool motion_validate_target_from_actual(
+    const robot_joint_target_t *target,
+    const int32_t actual_joint_urad[ROBOT_JOINT_COUNT])
+{
+    return motion_validate_target(target) &&
+           joint_config_transition_satisfies_interlocks(
+               actual_joint_urad,
+               target->joint_urad);
 }
 
 bool motion_transform_sample(

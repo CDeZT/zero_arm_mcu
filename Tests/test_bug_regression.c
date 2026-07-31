@@ -1,4 +1,5 @@
 #include "messages.h"
+#include "motor_types.h"
 #include "protocol.h"
 #include "robot.h"
 #include "robot_state.h"
@@ -50,12 +51,101 @@ osStatus_t osMutexRelease(osMutexId_t id) { (void)id; return s_mutex_status; }
 
 robot_result_t robot_submit_joint_target(const robot_joint_target_t *t)
 { if (t == NULL) return ROBOT_ERR_ARGUMENT; return ROBOT_OK; }
+bool motion_validate_target_from_actual(
+    const robot_joint_target_t *target,
+    const int32_t actual_joint_urad[ROBOT_JOINT_COUNT])
+{
+    return target != NULL &&
+           actual_joint_urad != NULL;
+}
 robot_result_t robot_request_enable(uint8_t m) { (void)m; return ROBOT_OK; }
 robot_result_t robot_request_disable(uint8_t m) { (void)m; return ROBOT_OK; }
 robot_result_t robot_request_stop(void) { return ROBOT_OK; }
 robot_result_t robot_request_teach_start(uint8_t m) { (void)m; return ROBOT_OK; }
 robot_result_t robot_request_teach_stop(void) { return ROBOT_OK; }
 robot_result_t robot_request_home(uint8_t m) { (void)m; return ROBOT_ERR_NOT_CONFIGURED; }
+
+robot_result_t motor_manager_bench_query(
+    uint8_t motor_id,
+    motor_bench_state_t *state)
+{
+    if (state == NULL) {
+        return ROBOT_ERR_ARGUMENT;
+    }
+    memset(state, 0, sizeof(*state));
+    state->motor_id = motor_id;
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_enable(uint8_t motor_id)
+{
+    (void)motor_id;
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_disable(uint8_t motor_id)
+{
+    (void)motor_id;
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_stop(uint8_t motor_id)
+{
+    (void)motor_id;
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_move_relative(
+    uint8_t motor_id,
+    uint8_t direction,
+    uint32_t degrees_tenths,
+    uint16_t velocity_tenths,
+    uint16_t acceleration_rpm_s)
+{
+    (void)motor_id;
+    (void)direction;
+    (void)degrees_tenths;
+    (void)velocity_tenths;
+    (void)acceleration_rpm_s;
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_set_zero(uint8_t motor_id)
+{
+    (void)motor_id;
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_get_protection(
+    uint8_t motor_id,
+    motor_protection_t *protection)
+{
+    if (protection == NULL) {
+        return ROBOT_ERR_ARGUMENT;
+    }
+    *protection = (motor_protection_t) {
+        .motor_id = motor_id,
+        .temperature_c = 100U,
+        .current_ma = 3500U,
+        .detection_time_ms = 300U
+    };
+    return ROBOT_OK;
+}
+
+robot_result_t motor_manager_bench_set_protection(
+    uint8_t motor_id,
+    bool save,
+    uint16_t temperature_c,
+    uint16_t current_ma,
+    uint16_t detection_time_ms)
+{
+    (void)motor_id;
+    (void)save;
+    (void)temperature_c;
+    (void)current_ma;
+    (void)detection_time_ms;
+    return ROBOT_OK;
+}
 
 static void test_bug_fault_state_cannot_clear(void)
 {
@@ -124,8 +214,29 @@ static void test_joint_config_always_valid(void)
     const joint_config_t *c = joint_config_get(0U);
     assert(c != NULL);
     assert(c->motor_id > 0U);
+    assert(c->continuous_rotation);
+    assert(c->limit_switch_installed);
+    assert(c->home_raw_direction == 1);
     printf("joint 0: motor_id=%u sign=%d ratio=%d\n",
            c->motor_id, c->motor_sign, c->gear_ratio_milli);
+
+    const joint_config_t *j3 = joint_config_get(2U);
+    assert(j3 != NULL);
+    assert(j3->motor_sign == 1);
+    assert(!j3->continuous_rotation);
+    assert(j3->limit_switch_installed);
+    assert(j3->home_raw_direction == 1);
+    assert(j3->min_urad == 0);
+    assert(j3->max_urad ==
+           135 * JOINT_URAD_PER_DEGREE);
+    assert(j3->zero_urad == 0);
+
+    const joint_config_t *j4 = joint_config_get(3U);
+    assert(j4 != NULL);
+    assert(j4->motor_sign == 1);
+    assert(j4->home_raw_direction == 1);
+    assert(j4->min_urad == -90 * JOINT_URAD_PER_DEGREE);
+    assert(j4->max_urad == 90 * JOINT_URAD_PER_DEGREE);
 }
 
 int main(void)

@@ -1,6 +1,6 @@
 # ZEROARM MCU 已知问题报告
 
-更新时间：2026-07-27 | 测试基线：15/15 单元测试 + ASan/UBSan 全通过
+更新时间：2026-07-28 | 测试基线：16/16 单元测试 + 严格 ASan/UBSan 全通过
 
 ## 状态总览
 
@@ -11,14 +11,30 @@
 | B3 | `robot_state_t` padding 泄漏 | **已修复**（显式 reserved 字段） | `test_bug_regression` |
 | B4 | 多处 X_V2/状态失败被 `(void)` 静默 | **已修复**（错误计数器 + TEACH 路径故障标志） | `test_motor_manager` |
 | B5 | `robot_submit_joint_target(NULL)` | 非缺陷，行为正确 | `test_bug_regression` |
-| B6 | `robot_sync_reference_to_actual` 部分提交 | 确认无缺陷，注释说明 | `test_bug_regression` |
+| B6 | 目标互斥锁释放失败未完整传播，伪回归测试未链接真实 `robot.c` | **已修复**（真实实现测试 + 状态更新失败时目标失效） | `test_robot.test_mutex_release_failures_are_propagated` |
+| B7 | `protocol_build_frame()` 的 `uint8_t` 长度加法在 payload=255 时回绕并绕过容量检查 | **已修复**（宽类型计算 + 写入前完整校验） | `test_protocol_robustness.test_build_frame_boundaries` |
 | G1 | `CMD_HOME` 有宏定义无处理，回 NOT_IMPLEMENTED 而非 NOT_CONFIGURED | **已修复** | `test_messages.test_home_returns_not_configured` |
 | G2 | 故障恢复对 PC 不可达 | **已修复**（新增 `CMD_CLEAR_FAULT=0x09`） | `test_messages`、`test_integration.test_fault_clear_closed_loop` |
 | G3 | B2 修复回归：`robot_clear_fault` 在非 FAULT 状态下强制切 READY | **已修复**（仅 FAULT→READY 迁移） | `test_robot_state_full.test_clear_fault_preserves_non_fault_state` |
 | G4 | 协议拒绝路径零覆盖 | **已修复**（`test_protocol_robustness`） | CRC 错误、LEN 边界、截断重同步、10k 往返 |
-| G5 | CRC 算法变更板端未验证 | **待硬件** | 板测阶段 E（含 CRC 校验脚本） |
+| G5 | CRC 算法变更板端未验证 | **已板测** | `test_hardware_readonly.ps1` 的坏 CRC 拒绝和响应 CRC 校验 |
 | G6 | GET_STATE 裸结构体端序/enum 尺寸依赖 | **推迟** | PC 客户端立项时做版本化序列化 |
 | G7 | 能力查询/时间戳/命令序号 | **出范围**（新特性） | AGENTS.md §4 未来需求 |
+
+## 本轮审计新增的待修复项
+
+1. **M1：运动到达后仍重复下发目标（已修复）。** 最后一个样本继续以
+   `reached=true` 返回一次，随后 trajectory 自动 inactive；新目标会重新激活。
+   守护测试验证到达后不能继续发布样本，并验证新目标能够恢复。
+2. **M2：运行状态没有闭环。** enabled/homed/moving mask 的 setter 没有进入正常服务和
+   运动路径，`ROBOT_STATE_RUNNING` 也没有实际切换；GET_STATE 中的零值不能当作真实确认。
+3. **M3：关键执行失败仍可能静默。** `MotorTask` 忽略
+   `motor_manager_send_latest_target()` 返回值，服务 helper 没有聚合逐轴失败，
+   Host/Robot/Motor 的多处 `osEventFlagsSet()` 结果未检查。
+4. **M4：RTOS 等待错误未区分。** HostTask/MotorTask 将 `osEventFlagsWait()` 的返回值
+   直接作为事件位使用，没有先排除 CMSIS 错误编码。
+5. **M5：启动失败路径不完整。** `app_start()` 在部分任务已经创建后若后续任务或外设
+   启动失败，会进入 Error_Handler，但没有明确停止已创建任务或回滚已启动资源。
 
 ## 本轮新增协议命令
 
@@ -41,4 +57,6 @@
 cd Tests && chmod +x run_comprehensive.sh && ./run_comprehensive.sh
 ```
 
-当前结果：普通 **15/15**，ASan/UBSan **15/15**，STM32 Debug 编译通过（RAM 22976 B / 17.53%，FLASH 54132 B / 10.32%）。
+当前结果：普通 **16/16**，严格 ASan/UBSan **16/16**，STM32 Debug 编译通过
+（RAM 22976 B / 17.53%，FLASH 54448 B / 10.39%）。固件已刷写并 verify；
+500 轮、1000 帧 HELLO/GET_STATE 只读压力测试通过。

@@ -19,6 +19,42 @@ static osEventFlagsId_t s_motor_events;
 static uint32_t s_can_rx_drop_count;
 static uint32_t s_can_rx_error_count;
 static uint32_t s_can_tx_failure_count;
+static uint32_t s_can_bus_recoveries;
+
+static void fdcan_recover_tx_path(void)
+{
+    FDCAN_ProtocolStatusTypeDef status = {0};
+
+    /*
+     * Classic CAN auto-retransmit keeps unacknowledged frames in the TX
+     * FIFO forever. Abort pending buffers so a missing motor cannot wedge
+     * every later command for the rest of the boot.
+     */
+    (void)HAL_FDCAN_AbortTxRequest(
+        &hfdcan1,
+        FDCAN_TX_BUFFER0 |
+        FDCAN_TX_BUFFER1 |
+        FDCAN_TX_BUFFER2);
+
+    if (HAL_FDCAN_GetProtocolStatus(
+            &hfdcan1,
+            &status) != HAL_OK) {
+        return;
+    }
+
+    if (status.BusOff == 0U) {
+        return;
+    }
+
+    (void)HAL_FDCAN_Stop(&hfdcan1);
+    if (HAL_FDCAN_Start(&hfdcan1) == HAL_OK) {
+        (void)HAL_FDCAN_ActivateNotification(
+            &hfdcan1,
+            FDCAN_IT_RX_FIFO0_NEW_MESSAGE,
+            0U);
+        s_can_bus_recoveries++;
+    }
+}
 
 static uint32_t fdcan_length_to_dlc(uint8_t length)
 {
@@ -72,19 +108,55 @@ static bool fdcan_submit_tx_frame(
     const uint8_t *data,
     uint32_t command_start_tick)
 {
+    bool recovered = false;
+
     for (;;) {
         uint32_t elapsed =
             osKernelGetTickCount() - command_start_tick;
 
         if (elapsed >= FDCAN_TX_COMMAND_TIMEOUT_MS) {
+            fdcan_recover_tx_path();
             return false;
         }
 
         if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) > 0U) {
-            return HAL_FDCAN_AddMessageToTxFifoQ(
-                       &hfdcan1,
-                       header,
-                       data) == HAL_OK;
+            if (HAL_FDCAN_AddMessageToTxFifoQ(
+                    &hfdcan1,
+                    header,
+                    data) == HAL_OK) {
+                return true;
+            }
+
+            fdcan_recover_tx_path();
+            return false;
+        }
+
+        if (!recovered) {
+            fdcan_recover_tx_path();
+            recovered = true;
+            continue;
+        }
+
+        if (osDelay(1U) != osOK) {
+            fdcan_recover_tx_path();
+            return false;
+        }
+    }
+}
+
+static bool fdcan_wait_for_command_slots(
+    uint8_t required_slots,
+    uint32_t command_start_tick)
+{
+    for (;;) {
+        if (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) >=
+            required_slots) {
+            return true;
+        }
+
+        if (osKernelGetTickCount() - command_start_tick >=
+            FDCAN_TX_COMMAND_TIMEOUT_MS) {
+            return false;
         }
 
         if (osDelay(1U) != osOK) {
@@ -108,6 +180,7 @@ bool platform_fdcan_init(
     s_can_rx_drop_count = 0U;
     s_can_rx_error_count = 0U;
     s_can_tx_failure_count = 0U;
+    s_can_bus_recoveries = 0U;
     return true;
 }
 
@@ -173,6 +246,28 @@ bool platform_fdcan_send_command(
     uint8_t packet_number = 0U;
     uint8_t command_offset = FDCAN_COMMAND_PREFIX_SIZE;
     uint32_t command_start_tick = osKernelGetTickCount();
+    uint8_t command_data_length =
+        (uint8_t)(length - FDCAN_COMMAND_PREFIX_SIZE);
+    uint8_t required_slots =
+        (uint8_t)((command_data_length +
+                   FDCAN_PACKET_DATA_SIZE - 1U) /
+                  FDCAN_PACKET_DATA_SIZE);
+
+    if (!fdcan_wait_for_command_slots(
+            required_slots,
+            command_start_tick)) {
+        /* A genuinely stuck FIFO or bus-off condition is the only case in
+         * which pending frames may be aborted.  Normal multi-frame commands
+         * are allowed to drain intact before the next command starts. */
+        fdcan_recover_tx_path();
+        command_start_tick = osKernelGetTickCount();
+        if (!fdcan_wait_for_command_slots(
+                required_slots,
+                command_start_tick)) {
+            s_can_tx_failure_count++;
+            return false;
+        }
+    }
 
     while (command_offset < length) {
         uint8_t remaining = length - command_offset;
@@ -285,4 +380,9 @@ uint32_t platform_fdcan_rx_error_count(void)
 uint32_t platform_fdcan_tx_failure_count(void)
 {
     return s_can_tx_failure_count;
+}
+
+uint32_t platform_fdcan_bus_recovery_count(void)
+{
+    return s_can_bus_recoveries;
 }

@@ -16,6 +16,8 @@
 #include "trajectory.h"
 #include "homing.h"
 #include "platform_gpio.h"
+#include "platform_gripper_uart.h"
+#include "platform_time.h"
 
 osMessageQueueId_t g_robot_service_queue;
 osMessageQueueId_t g_can_rx_queue;
@@ -27,6 +29,18 @@ osMutexId_t g_motor_target_mutex;
 
 osEventFlagsId_t g_host_events;
 osEventFlagsId_t g_motor_events;
+
+static void app_on_protocol_frame(
+    uint8_t command,
+    const uint8_t *payload,
+    uint8_t payload_length)
+{
+    homing_note_activity(platform_time_ms());
+    messages_on_frame(
+        command,
+        payload,
+        payload_length);
+}
 
 static bool app_create_resources(void)
 {
@@ -86,7 +100,7 @@ bool app_start(void)
         return false;
     }
 
-    protocol_init(messages_on_frame);
+    protocol_init(app_on_protocol_frame);
 
     if (!trajectory_init()) {
         return false;
@@ -104,10 +118,29 @@ bool app_start(void)
         return false;
     }
 
+    if (!platform_gripper_uart_init()) {
+        return false;
+    }
+
     if (!platform_fdcan_init(
             g_can_rx_queue,
             g_motor_events)) {
         return false;
+    }
+
+    platform_gpio_init();
+    homing_init();
+    if (platform_required_limits_are_active(
+            CONFIG_STARTUP_LIMIT_JOINT_MASK)) {
+        if (!robot_set_motion_authorized(true) ||
+            !robot_set_run_state(ROBOT_STATE_READY)) {
+            return false;
+        }
+    } else {
+        (void)robot_set_motion_authorized(false);
+        if (!robot_set_fault(ROBOT_FAULT_STARTUP)) {
+            return false;
+        }
     }
 
     if (osThreadNew(
@@ -135,14 +168,14 @@ bool app_start(void)
         return false;
     }
 
-    if (!platform_uart_start_rx()) {
-        return false;
+    if (!motor_manager_start_position_feedback(
+            CONFIG_FEEDBACK_JOINT_MASK,
+            MOTOR_POSITION_FEEDBACK_PERIOD_MS)) {
+        (void)robot_set_motion_authorized(false);
+        (void)robot_set_fault(ROBOT_FAULT_STARTUP);
     }
 
-    platform_gpio_init();
-    homing_init();
-
-    if (!robot_set_run_state(ROBOT_STATE_READY)) {
+    if (!platform_uart_start_rx()) {
         return false;
     }
 
