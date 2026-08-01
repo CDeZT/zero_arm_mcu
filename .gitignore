@@ -32,3 +32,8 @@ Desktop.ini
 slprj/
 *.mldatx
 export.log
+
+# ===== Test artifacts / temp =====
+tmp/
+Tests/*_report_*
+Tests/test_hardware_readonly.ps1
