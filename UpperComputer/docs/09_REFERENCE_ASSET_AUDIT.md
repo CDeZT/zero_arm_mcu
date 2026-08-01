@@ -38,16 +38,57 @@ docx/Reference_project/zero-robotic-arm-master/
 | J5 | -90～0° | 0～90° | 很可能符号或 +90°偏置不同 |
 | J6 | continuous | 0～360° | 需要角度绕回策略 |
 
+> 注意：本表“当前 MCU 初值”是参考 URDF 对照时使用的早期估算，**不是
+> `Config/joint_config.c` 当前装机值**。上位机实现必须以第 3.1 节的实际配置
+> 为准，不能引用本表数值作为限位或映射来源。
+
 这不一定是错误：URDF 关节坐标、机械展示角和 MCU 公共关节角可以具有固定
 偏置和符号。上位机必须显式定义：
 
 ```text
 MCU joint urad
- -> sign + zero offset + wrap policy
- -> model joint rad
+  -> sign + zero offset + wrap policy
+  -> model joint rad
 ```
 
 不得通过在 GUI 中散落 `+90`、`-90` 等常量解决。
+
+### 3.1 当前 MCU 实际关节配置（`Config/joint_config.c`，2026-08-01 快照）
+
+| 关节 | motor_id | motor_sign | continuous | 限位开关 | min | max | zero | 减速比(milli) |
+|---|---|---|---|---|---|---|---|---|
+| J1 | 1 | +1 | 是 | 有 | 0° | 360° | 0° | 50000 |
+| J2 | 2 | -1 | 否 | 无 | 90° | 180° | 90° | 50890 |
+| J3 | 3 | +1 | 否 | 有 | 0° | 135° | 0° | 50890 |
+| J4 | 4 | +1 | 否 | 有 | -90° | 90° | 0° | 51000 |
+| J5 | 5 | +1 | 否 | 有 | -35° | 135° | 0° | 26850 |
+| J6 | 6 | -1 | 否 | 无 | 0° | 360° | 0° | 51000 |
+
+- 全部关节 `max_velocity_urad_s = 30°/s`。
+- `motor_sign`：关节→电机换算乘以该符号（见 `Motion/Src/joint_transform.c`）。
+- J2/J6 未安装限位开关，`home_raw_direction = -1`（未标定）。
+
+### 3.2 J3/J4/J5 组合运动互锁（`joint_interlock_config_t`）
+
+MCU 在目标校验阶段强制下列碰撞约束（违反即拒绝目标）：
+
+| 阈值 | 值 |
+|---|---|
+| J3 允许 J4 运动的最低角度 | 15° |
+| J3 允许 J5 中段运动的最低角度 | 15° |
+| J3 在低段时 J5 的最大角度 | 45° |
+| J3 允许 J5 伸展的最低角度 | 45° |
+| J3 在中段时 J5 的最大角度 | 60° |
+
+规则：
+
+1. J4 运动（非零）要求 J3 已经高于 15°。
+2. J5 > 45° 要求 J3 已高于 15°；J5 > 60° 要求 J3 已高于 45°。
+3. 一次多轴目标不能让 J3 与 J4/J5 同时跨越各自阈值（`transition` 校验）。
+4. 降 J3 前 J4 必须回到 0°，且 J5 必须已回到受限范围内。
+
+互锁在 `Motion/Src/motion.c` 经 `motion_validate_target_from_actual()` 强制，
+SET_JOINT_TARGET 与 MotionTask 都走该校验；`test_motion.c` 有对应守护测试。
 
 ## 4. 模型导入流程
 

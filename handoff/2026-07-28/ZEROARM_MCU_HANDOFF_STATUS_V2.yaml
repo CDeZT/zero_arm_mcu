@@ -1,6 +1,6 @@
 handoff:
   schema: zeroarm-mcu-handoff/v2
-  updated: "2026-07-28"
+  updated: "2026-08-01"
   repository: "C:\\Users\\Administrator\\CLionProjects\\zero_arm_mcu"
   branch: main
   next_defect: K-EVENT-01
@@ -16,23 +16,23 @@ documents:
 
 baseline:
   host_tests:
-    total: 18
-    passed: 18
+    total: 19
+    passed: 19
   sanitizers:
     address: pass
     undefined: pass
-    tests: 18
+    tests: 19
     strict_no_recover: true
   stm32:
     debug:
       status: pass
-      ram_bytes: 22992
-      flash_bytes: 55268
+      ram_bytes: 23296
+      flash_bytes: 68444
       elf: build/Debug/zero_arm_mcu.elf
     release:
       status: pass
-      ram_bytes: 22984
-      flash_bytes: 31280
+      ram_bytes: 23288
+      flash_bytes: 38412
       elf: build/Release/zero_arm_mcu.elf
   board_latest_firmware_verified: false
   mechanical_commands_sent_during_remediation: []
@@ -60,6 +60,12 @@ completed:
     commit: 4821201
   - id: K-HOST-01
     commit: c81a4ef
+  - id: K-GRIPPER-01
+    commit: 955050b
+    note: ST-3215 STS driver, USART2 half-duplex, console and hardware scripts
+  - id: K-BENCH-01
+    commit: 5e68bc5
+    note: bench commands 0x20-0x27, homing loop, motor target snapshot
 
 pending:
   W2:
@@ -106,21 +112,15 @@ hardware_blocked:
   - H-HOME-01
 
 working_tree_preserve:
-  - path: .idea/editor.xml
-    state: modified
-    action: do_not_stage
-  - path: AGENTS.md
-    state: deleted
-    action: do_not_restore_or_stage_without_user_request
-  - path: KNOWN_ISSUES.md
-    state: modified_mixed_history
-    action: review_and_split_before_stage
   - path: Tests/test_hardware_readonly.ps1
     state: untracked
-    action: audit_command_whitelist_before_commit
+    action: gitignored_in_commit_955050b
   - path: tmp/
     state: untracked
-    action: do_not_stage
+    action: gitignored_in_commit_955050b
+  - path: .gitignore
+    state: committed
+    action: ignore_reports_tmp_and_readonly_script
 
 board:
   programmer: STM32CubeProgrammer_2.23.0

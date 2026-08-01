@@ -141,7 +141,7 @@ typedef struct
 {
     int32_t joint_urad[ROBOT_JOINT_COUNT];
     uint16_t duration_ms;       /* 第一版为 0 */
-    uint16_t gripper_u16;       /* 第一版忽略 */
+    uint16_t gripper_u16;       /* 只解码不驱动；夹爪动作走 0x30~0x34 */
 } robot_joint_target_t;
 
 typedef enum
@@ -797,6 +797,11 @@ void messages_on_frame(
         result = messages_decode_and_submit_target(
             data, length);
         break;
+
+    /* 0x20~0x27 台架命令（CONFIG_MOTOR_BENCH_TEST 门控）与
+     * 0x30~0x34 夹爪命令（ST-3215 STS 桥接）的完整处理见
+     * Protocol/Src/messages.c 同名 switch。夹爪语义见
+     * GRIPPER_ST3215_GUIDE.md，台架语义见 Tests/*.ps1。 */
 
     default:
         result = ROBOT_ERR_NOT_IMPLEMENTED;

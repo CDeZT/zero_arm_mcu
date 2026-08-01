@@ -48,21 +48,21 @@ cmake --list-presets
 
 ## 3. Dirty 工作区规则
 
-交接时已知不属于当前修复提交的状态：
+上次交接的 dirty 状态已随 `5e68bc5`/`955050b` 变化：
 
 ```text
-M  .idea/editor.xml
-D  AGENTS.md
-M  KNOWN_ISSUES.md
-?? Tests/test_hardware_readonly.ps1
-?? tmp/
+.idea/editor.xml            已随 5e68bc5 提交
+AGENTS.md                   已随 5e68bc5 删除提交，不恢复
+KNOWN_ISSUES.md             已纳入 5e68bc5 更新
+Tests/test_hardware_readonly.ps1  已加入 .gitignore（955050b）
+tmp/                        已加入 .gitignore（955050b）
 ```
 
 规则：
 
 - 不恢复或提交根 `AGENTS.md`，除非用户明确要求。
 - 不提交 `.idea/editor.xml` 和 `tmp/`。
-- `KNOWN_ISSUES.md` 含多轮混合更新，提交前必须拆分审查。
+- `KNOWN_ISSUES.md` 当前已提交；后续仍按“一问题一原子提交”精确暂存。
 - 硬件脚本必须先审核命令白名单，再决定归档。
 - 禁止使用 `git reset --hard`、`git checkout --`、`git clean` 或删除方式制造干净状态。
 - 同一文件有多个问题时按 hunk 精确暂存。
@@ -222,6 +222,9 @@ AA LEN CMD PAYLOAD CRC8 55
 - V1 GET_STATE 当前为 60 字节本地小端结构布局。
 - 上位机必须显式按偏移解码，不能使用 native ABI。
 - V2 未实施前不得改变 V1 命令 ID 或现有响应。
+- 当前新增 V1 命令：台架 `0x20`~`0x27`（`CONFIG_MOTOR_BENCH_TEST` 门控）
+  和夹爪 `0x30`~`0x34`。夹爪命令语义见 `GRIPPER_ST3215_GUIDE.md` 和
+  `UpperComputer/docs/17_API_DATA_AND_FIXTURE_CONTRACTS.md`。
 
 协议修改前先形成审批包，至少包括：
 

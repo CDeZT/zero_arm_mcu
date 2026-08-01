@@ -1,6 +1,6 @@
 # ZEROARM MCU 已知问题报告
 
-更新时间：2026-07-28 | 测试基线：16/16 单元测试 + 严格 ASan/UBSan 全通过
+更新时间：2026-08-01 | 测试基线：19/19 单元测试 + 严格 ASan/UBSan 19/19
 
 ## 状态总览
 
@@ -39,6 +39,8 @@
 ## 本轮新增协议命令
 
 - `CMD_CLEAR_FAULT = 0x09`：零负载。清除全部故障标志；仅当当前为 `ROBOT_STATE_FAULT` 且标志清零后自动恢复 `ROBOT_STATE_READY`。成功回 `ROBOT_OK`，互斥锁失败回 `ROBOT_ERR_STATE`，非零负载回 `ROBOT_ERR_ARGUMENT`。
+- 台架命令 `CMD_BENCH_* = 0x20`~`0x27`：单电机查询/使能/失能/停止/相对运动/置零/保护读写，`CONFIG_MOTOR_BENCH_TEST` 门控，仅供台架测试。
+- 夹爪命令 `CMD_GRIPPER_* = 0x30`~`0x34`：ST-3215 STS PING/READ/WRITE/MOVE/TORQUE 桥接。bring-up 阶段 `SET_JOINT_TARGET` 的 `gripper_u16` 仍只解码不驱动，安全开合位置标定前禁止真实发送 MOVE/TORQUE。
 
 ## 协议行为说明（测试确认的设计语义）
 
@@ -57,6 +59,5 @@
 cd Tests && chmod +x run_comprehensive.sh && ./run_comprehensive.sh
 ```
 
-当前结果：普通 **16/16**，严格 ASan/UBSan **16/16**，STM32 Debug 编译通过
-（RAM 22976 B / 17.53%，FLASH 54448 B / 10.39%）。固件已刷写并 verify；
-500 轮、1000 帧 HELLO/GET_STATE 只读压力测试通过。
+当前结果：普通 **19/19**，严格 ASan/UBSan **19/19**。夹爪驱动新增
+`test_feetech_sts`（`955050b`）。固件编译/板测状态以最新 handoff YAML 为准。

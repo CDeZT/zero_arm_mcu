@@ -14,13 +14,15 @@ Robot/Motor 锁错误、测试假阳性、故障分类和事件等待错误。
 
 当前软件基线：
 
-- 主机测试：17/17。
-- 严格 ASan/UBSan：17/17。
+- 主机测试：19/19。
+- 严格 ASan/UBSan：19/19。
 - STM32 Debug 和 Release 均通过。
-- Debug：RAM 22,976 B，FLASH 54,716 B。
-- Release：RAM 22,968 B，FLASH 30,928 B。
+- Debug：RAM 23,296 B，FLASH 68,444 B。
+- Release：RAM 23,288 B，FLASH 38,412 B。
 - 实板当前因 NRST/RDP 异常未刷入最新固件，串口 HELLO 超时。
 - 本轮及此前安全板测没有发送目标、使能、失能、STOP、HOME 或 TEACH。
+- 夹爪 bring-up：ST-3215 STS 驱动已接入，但安全开合位置尚未标定，`SET_JOINT_TARGET`
+  的 `gripper_u16` 字段仍只解码不驱动舵机。
 
 ## 2. 架构和数据流
 
@@ -37,6 +39,16 @@ PC
  -> X_V2
  -> Platform FDCAN
  -> six motors
+```
+
+夹爪数据流（独立于六轴 CAN 路径）：
+
+```text
+PC 命令 0x30~0x34
+ -> Messages
+ -> Gripper feetech_sts
+ -> Platform Gripper UART (USART2 half-duplex)
+ -> ST-3215 STS bus
 ```
 
 反馈：
@@ -75,6 +87,9 @@ FDCAN ISR
 | `d4984ae` | K-TEST-01/K-TOOL-01 | 删除假阳性并动态运行 Sanitizer 测试 |
 | `d01d725` | K-FAULT-01 | 故障位分类及 Motor/内部路径接入 |
 | `4821201` | K-EVENT-02 | 事件等待错误判错、退避和跳过分派 |
+| `c81a4ef` | K-HOST-01 | Host TX DMA 启动失败丢响应恢复 |
+| `5e68bc5` | 7-31 工作台 | Homing 闭环、Motor 目标快照、台架命令 `0x20`~`0x27`、保护接口 |
+| `955050b` | 夹爪 bring-up | ST-3215 STS 驱动、夹爪命令 `0x30`~`0x34`、控制台与硬件脚本 |
 
 每个提交已经独立审查，不能 squash 后丢失问题边界，除非用户以后明确要求。
 
@@ -153,33 +168,28 @@ W8 影响上位机合同，实施前必须同时更新黄金帧、兼容矩阵�
 `next_defect`：
 
 ```text
-K-HOST-01
+K-EVENT-01
 ```
 
 先检查：
 
-- `messages_queue_response()` 的 queue/event 原子性。
-- `host_try_start_next_tx()` 取队列后 DMA 启动失败时是否永久丢响应。
-- TX_DONE 事件异常是否导致 busy 状态错误。
-- HostTask 是否能暴露 UART stream overflow。
-- queue full、event set error、HAL TX error 的故障位和恢复差异。
+- queue 成功而 event set 失败时是否产生永久幽灵消息。
+- Host/Motor/Motion 任务事件等待与分派的错误语义。
+- 事件仅是唤醒提示，不成为数据存在的唯一事实来源。
 
 不要在同一个提交顺便重构 Motor/Motion。
 
 ## 7. 当前 Dirty 状态
 
-交接时：
+上次交接的 dirty 项已变化：
 
-```text
-M  .idea/editor.xml
-D  AGENTS.md
-M  KNOWN_ISSUES.md
-?? Tests/test_hardware_readonly.ps1
-?? tmp/
-```
+- `.idea/editor.xml` 已随 `5e68bc5` 提交。
+- 根 `AGENTS.md` 已在 `5e68bc5` 删除提交，不再恢复。
+- `KNOWN_ISSUES.md` 已纳入 `5e68bc5` 更新。
+- `Tests/test_hardware_readonly.ps1` 与 `tmp/` 已加入 `.gitignore`，不跟踪。
 
-这些内容均没有被最新修复提交夹带。下一 Agent 必须重新运行 `git status --short`
-确认是否变化。
+当前 `git status --short` 应为干净或仅含用户新改动。下一 Agent 必须重新运行
+`git status --short` 确认是否变化。
 
 ## 8. 文档索引
 

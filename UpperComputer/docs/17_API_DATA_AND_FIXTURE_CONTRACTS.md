@@ -138,6 +138,21 @@ CRC = Dallas/Maxim reflected polynomial 0x8C, initial 0x00
 | 0x07 | TEACH_START | joint mask 1B | result 1B |
 | 0x08 | TEACH_STOP | 空 | result 1B |
 | 0x09 | CLEAR_FAULT | 空 | result 1B |
+| 0x20 | BENCH_QUERY | motor_id 1B | bench_state 固定小端布局 |
+| 0x21 | BENCH_ENABLE | motor_id 1B | result 1B |
+| 0x22 | BENCH_DISABLE | motor_id 1B | result 1B |
+| 0x23 | BENCH_STOP | motor_id 1B | result 1B |
+| 0x24 | BENCH_MOVE_REL | 10B | result 1B |
+| 0x25 | BENCH_SET_ZERO | motor_id 1B | result 1B |
+| 0x26 | BENCH_GET_PROTECTION | motor_id 1B | protection 7B |
+| 0x27 | BENCH_SET_PROTECTION | 8B | result 1B |
+| 0x30 | GRIPPER_PING | id 1B | result+id+servo_error 3B |
+| 0x31 | GRIPPER_READ | id+addr+len 3B | result+id+servo_error+data |
+| 0x32 | GRIPPER_WRITE | id+addr+data ≥3B | result+id+servo_error 3B |
+| 0x33 | GRIPPER_MOVE | 6B | result+id+servo_error 3B |
+| 0x34 | GRIPPER_TORQUE | id+mode 2B | result+id+servo_error 3B |
+
+0x20～0x27 台架命令仅在 `CONFIG_MOTOR_BENCH_TEST` 使能时编译。
 
 SET_JOINT_TARGET请求：
 
@@ -146,6 +161,79 @@ offset 0..23: J1..J6，每轴BE int32 urad
 offset 24..25: BE uint16 duration_ms
 offset 26..27: BE uint16 gripper_u16
 ```
+
+MCU 在目标校验阶段强制执行（违反返回 `ERR_RANGE`/`ERR_STATE` 等 result）：
+
+- 每轴软限位 `min/max urad` 与 `continuous_rotation` 配置
+  （`Config/joint_config.c`，实际数值见 `09_REFERENCE_ASSET_AUDIT.md` §3.1）。
+- J3/J4/J5 组合运动互锁（J3 抬高到 15°/45° 前禁止 J4/J5 越界运动、
+  降 J3 前 J4 必须回 0°、J5 必须回受限范围）。约束值见
+  `09_REFERENCE_ASSET_AUDIT.md` §3.2，实现为
+  `motion_validate_target_from_actual()`，SET_JOINT_TARGET 与 MotionTask 共用。
+
+上位机不应只依赖 MCU 拒绝：点动、回放和 IK 必须在发送前用同一限位/互锁
+规则做本地校验，MCU 校验仅作为最终防线。
+
+BENCH_MOVE_REL请求（10B）：
+
+```text
+offset 0: motor_id
+offset 1: direction（0=正向，1=反向）
+offset 2..5: BE uint32 degrees_tenths
+offset 6..7: BE uint16 velocity_tenths（0.1 RPM）
+offset 8..9: BE uint16 acceleration_rpm_s
+```
+
+BENCH_GET_PROTECTION响应（7B）：
+
+```text
+offset 0: motor_id
+offset 1..2: BE uint16 temperature_c
+offset 3..4: BE uint16 current_ma
+offset 5..6: BE uint16 detection_time_ms
+```
+
+BENCH_SET_PROTECTION请求（8B）：
+
+```text
+offset 0: motor_id
+offset 1: enable（0/1）
+offset 2..3: BE uint16 temperature_c
+offset 4..5: BE uint16 current_ma
+offset 6..7: BE uint16 detection_time_ms
+```
+
+BENCH_QUERY响应为固定小端布局 `motor_bench_state_t`（40B，含2B保留）：
+
+```text
+offset 0: motor_id
+offset 1: online
+offset 2..3: reserved
+offset 4..7: int32 position_urad
+offset 8..11: int32 velocity（0.1 RPM）
+offset 12..13: uint16 current_ma
+offset 14..15: uint16 status
+offset 16..19: uint32 fault_flags
+offset 20..23: uint32 can_tx_errors
+offset 24..27: uint32 feedback_faults
+offset 28..31: uint32 position_sample_count
+offset 32..35: uint32 target_submit_count
+offset 36..39: uint32 target_send_count
+```
+
+GRIPPER 命令请求/响应语义（ST-3215 STS 总线桥接）：
+
+```text
+0x30 GRIPPER_PING   请求: id 1B
+0x31 GRIPPER_READ   请求: id addr len 3B；响应追加 len 字节寄存器数据
+0x32 GRIPPER_WRITE  请求: id addr data...（≥3B）
+0x33 GRIPPER_MOVE   请求: id 1B + BE uint16 position(0..4095) + BE uint16 speed + accel 1B
+0x34 GRIPPER_TORQUE 请求: id mode 2B（mode: 0=off,1=on,2=damping）
+```
+
+GRIPPER 响应前 3 字节为 `RESULT ID SERVO_ERROR`，`RESULT` 为 Feetech STS
+错误码（0 OK、1 ARGUMENT、2 NOT_INITIALIZED、3 TX、4 RX_TIMEOUT、5 PACKET、
+6 SERVO），READ 成功后追加读取数据。
 
 V1 GET_STATE仅对当前STM32G4 GCC构建按以下偏移兼容：
 

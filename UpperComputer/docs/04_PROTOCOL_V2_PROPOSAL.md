@@ -24,6 +24,23 @@ AA | LEN:u8 | CMD:u8 | DATA:LEN-1 | CRC8 | 55
 | `0x07` | TEACH_START | joint_mask:u8 |
 | `0x08` | TEACH_STOP | 空 |
 | `0x09` | CLEAR_FAULT | 空 |
+| `0x20` | BENCH_QUERY | motor_id:u8 |
+| `0x21` | BENCH_ENABLE | motor_id:u8 |
+| `0x22` | BENCH_DISABLE | motor_id:u8 |
+| `0x23` | BENCH_STOP | motor_id:u8 |
+| `0x24` | BENCH_MOVE_REL | motor_id:u8 + dir:u8 + deg_tenths:u32 BE + vel_tenths:u16 BE + accel:u16 BE |
+| `0x25` | BENCH_SET_ZERO | motor_id:u8 |
+| `0x26` | BENCH_GET_PROTECTION | motor_id:u8 |
+| `0x27` | BENCH_SET_PROTECTION | motor_id:u8 + enable:u8 + 3×u16 BE |
+| `0x30` | GRIPPER_PING | id:u8 |
+| `0x31` | GRIPPER_READ | id:u8 + addr:u8 + len:u8 |
+| `0x32` | GRIPPER_WRITE | id:u8 + addr:u8 + data... |
+| `0x33` | GRIPPER_MOVE | id:u8 + pos:u16 BE + speed:u16 BE + accel:u8 |
+| `0x34` | GRIPPER_TORQUE | id:u8 + mode:u8 |
+
+`0x20`～`0x27` 台架命令仅在 `CONFIG_MOTOR_BENCH_TEST` 使能时编译；`0x30`～
+`0x34` 是 ST-3215 夹爪 STS 总线桥接命令，详细语义见
+`GRIPPER_ST3215_GUIDE.md` 与 `17_API_DATA_AND_FIXTURE_CONTRACTS.md`。
 
 V1 的逐字节解析、CRC8、DMA分段、多帧、回绕和只读板测已经跑通，适合作为
 上位机第一阶段兼容入口。

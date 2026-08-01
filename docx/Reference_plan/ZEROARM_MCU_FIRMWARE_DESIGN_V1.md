@@ -129,7 +129,6 @@ PC
 ```text
 Homing 状态机和限位软件接口（GPIO/EXTI 已配置）
 拖动示教模式（六轴反馈稳定后实现）
-夹爪字段
 duration_ms
 CSS 故障接口
 故障标志入口
@@ -147,7 +146,16 @@ IWDG 健康管理
 复杂安全状态机
 ROS 2 / micro-ROS
 日志系统
-夹爪具体协议
+```
+
+### 3.4 夹爪 bring-up（2026-08-01 已接入）
+
+```text
+ST-3215 STS 单总线舵机，USART2 半双工 1,000,000 baud
+夹爪命令 0x30~0x34：PING/READ/WRITE/MOVE/TORQUE
+SET_JOINT_TARGET 的 gripper_u16 仍只解码不驱动
+安全开合位置标定前禁止真实 MOVE/TORQUE
+详细接线与交互见 GRIPPER_ST3215_GUIDE.md
 ```
 
 ---

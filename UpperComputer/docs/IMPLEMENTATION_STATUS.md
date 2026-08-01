@@ -24,6 +24,10 @@
 - MCU修复计划已拆成MCU-R0～R12。
 - MCU-RB0协议组帧边界已完成并提交`653b994`。
 - MCU-RB1轨迹到达后停止重复发布已完成并提交`ebb271c`。
+- MCU Host TX恢复已完成并提交`c81a4ef`。
+- MCU 台架命令（`0x20`~`0x27`）与 Homing 闭环已提交`5e68bc5`。
+- MCU 夹爪 ST-3215 STS 驱动与夹爪命令（`0x30`~`0x34`）已提交`955050b`；
+  命令语义见 `GRIPPER_ST3215_GUIDE.md` 和 `17_API_DATA_AND_FIXTURE_CONTRACTS.md`。
 - 用户要求剩余确认的软件问题全部逐项修复，每项一个独立提交。
 
 ## 待审批

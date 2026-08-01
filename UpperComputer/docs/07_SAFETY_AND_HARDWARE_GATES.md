@@ -12,12 +12,16 @@
 
 | 等级 | 命令 | 默认权限 |
 |---|---|---|
-| R | HELLO、GET_STATE、能力、PING | 可执行 |
+| R | HELLO、GET_STATE、能力、PING、GRIPPER_PING(0x30)、GRIPPER_READ(0x31) | 可执行 |
 | S | 烧录、verify、reset | 板卡范围确认后可执行，不产生机械动作 |
 | A | STOP、CLEAR_FAULT | 仍属于动作状态变更，真实板测需说明 |
 | B | SET_JOINT_TARGET、ENABLE、HOME | 必须机械安全确认 |
 | C | DISABLE、TEACH_START/STOP | 可能松轴，必须支撑和掩码确认 |
 | D | 轨迹、Cartesian、模型策略动作 | 必须前级验收通过 |
+| X | BENCH_*(0x20~0x27)、GRIPPER_WRITE(0x32)、GRIPPER_MOVE(0x33)、GRIPPER_TORQUE(0x34) | 仅台架/夹爪 bring-up 授权范围；夹爪 MOVE/TORQUE 在安全开合位置标定前禁止 |
+
+夹爪 `GRIPPER_MOVE/TORQUE/WRITE` 属动作命令，未装夹与开合标定前禁止真实发送；
+`SET_JOINT_TARGET` 的 `gripper_u16` 当前只解码不驱动，见 `GRIPPER_ST3215_GUIDE.md`。
 
 STOP列为A不是因为它危险，而是“发送STOP”可能改变当前运行状态，且不能借
 测试STOP为理由先启动不安全运动。

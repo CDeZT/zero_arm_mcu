@@ -95,4 +95,6 @@ C:\Users\Administrator\CLionProjects\zero_arm_mcu\docx\Reference_project\zero-ro
 - 机械臂尚未完成组装和标定。
 - 默认只允许 Mock、编译、刷写 verify、HELLO 和 GET_STATE。
 - 不允许真实发送目标、ENABLE、DISABLE、STOP、HOME 或 TEACH。
+- 夹爪 ST-3215 已接入但未标定安全开合位置：`0x33` MOVE、`0x34` TORQUE 属
+  动作命令，未装夹与标定前禁止发送。
 - ST-Link 当前存在 NRST/RDP 异常，详情见 MCU 交接文档。
