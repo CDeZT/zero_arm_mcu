@@ -21,6 +21,10 @@ bool homing_start(uint8_t joint_mask);
 
 bool homing_is_active(void);
 
+/* Cancel an in-progress homing sequence and return the state machine to idle.
+ * The caller remains responsible for motor stop/disable and fault handling. */
+void homing_abort(void);
+
 void homing_step(uint32_t now_ms);
 
 void homing_note_activity(uint32_t now_ms);

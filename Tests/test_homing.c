@@ -364,6 +364,29 @@ static void test_twenty_second_auto_home_timer(void)
     assert(s_home_request_count == 2U);
 }
 
+static void test_abort_stops_active_homing(void)
+{
+    reset_fakes();
+    homing_init();
+    s_limits[0] = false;
+    s_limits[4] = false;
+    s_feedback[4].online = true;
+    s_feedback[4].position_sample_count = 1U;
+
+    assert(homing_start(0x10U));
+    assert(homing_is_active());
+
+    homing_abort();
+
+    assert(!homing_is_active());
+    assert((s_stop_mask & 0x10U) != 0U);
+    assert(s_robot_state.moving_mask == 0U);
+
+    /* After abort a new sequence may begin. */
+    assert(homing_start(0x10U));
+    assert(homing_is_active());
+}
+
 int main(void)
 {
     test_descending_order_when_limits_active();
@@ -371,6 +394,7 @@ int main(void)
     test_continuous_j1_seeks_without_query_wait();
     test_position_timeout_fails_safe();
     test_twenty_second_auto_home_timer();
+    test_abort_stops_active_homing();
 
     puts("test_homing: all checks passed");
     return 0;

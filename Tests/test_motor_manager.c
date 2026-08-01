@@ -172,6 +172,12 @@ bool robot_motion_is_authorized(void)
     return s_motion_authorized;
 }
 
+bool robot_set_motion_authorized(bool authorized)
+{
+    s_motion_authorized = authorized;
+    return true;
+}
+
 bool homing_start(uint8_t joint_mask)
 {
     (void)joint_mask;
@@ -562,6 +568,7 @@ static void test_teach_start_stops_selected_axes_and_releases_them(void)
     assert(!s_robot_target_active);
     assert(s_robot_invalidation_count == 1U);
     assert(s_robot_run_state == ROBOT_STATE_TEACHING);
+    assert(!s_motion_authorized);
 }
 
 static void test_teach_stop_stops_feedback_and_syncs_reference(void)
@@ -612,6 +619,7 @@ static void test_teach_stop_stops_feedback_and_syncs_reference(void)
     assert(s_can_index == 1U);
     assert(s_robot_target_active);
     assert(s_robot_run_state == ROBOT_STATE_READY);
+    assert(s_motion_authorized);
 }
 
 static void test_six_axis_target_executes_immediately(void)

@@ -189,6 +189,7 @@ void MotorTask(void *argument)
             (void)robot_invalidate_motion_target();
             (void)robot_set_moving_mask(0U);
             (void)robot_set_enabled_mask(0U);
+            homing_abort();
             (void)robot_set_fault(ROBOT_FAULT_ESTOP);
             estop_latched = true;
             continue;

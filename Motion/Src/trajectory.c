@@ -4,6 +4,14 @@
 
 #include <stddef.h>
 
+/*
+ * NOTE: this interpolation module is NOT used on the production motion path.
+ * MotionTask submits the final absolute target exactly once per target
+ * generation and the X_V2 drives execute their own trapezoidal profile
+ * (see App/Src/app_tasks.c).  This module is kept as a reference and is
+ * exercised by host tests only.
+ */
+
 enum {
     MILLISECONDS_PER_SECOND = 1000
 };

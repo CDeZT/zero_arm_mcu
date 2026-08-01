@@ -226,6 +226,27 @@ bool homing_is_active(void)
 #endif
 }
 
+void homing_abort(void)
+{
+#if !CONFIG_HOMING_ENABLED
+    return;
+#else
+    if (!s_homing.initialized) {
+        return;
+    }
+
+    if (s_homing.current_joint < ROBOT_JOINT_COUNT) {
+        (void)motor_manager_homing_stop(
+            s_homing.current_joint);
+    }
+
+    s_homing.state = HOMING_IDLE;
+    s_homing.requested_mask = 0U;
+    s_homing.remaining_mask = 0U;
+    s_homing.current_joint = ROBOT_JOINT_COUNT;
+#endif
+}
+
 void homing_step(uint32_t now_ms)
 {
 #if !CONFIG_HOMING_ENABLED

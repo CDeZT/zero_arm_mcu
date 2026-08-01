@@ -511,6 +511,12 @@ bool motor_process_all_services(void)
                 (void)robot_set_fault(
                     ROBOT_FAULT_INTERNAL_STATE);
             }
+            /* Teaching disables torque on the selected axes: reject
+             * enable/motion requests until TEACH_STOP completes. */
+            if (!robot_set_motion_authorized(false)) {
+                (void)robot_set_fault(
+                    ROBOT_FAULT_INTERNAL_STATE);
+            }
             if (!robot_set_run_state(
                     ROBOT_STATE_TEACHING)) {
                 (void)robot_set_fault(
@@ -523,6 +529,14 @@ bool motor_process_all_services(void)
                 service.joint_mask,
                 motor_teach_stop_one);
             motor_process_all_can_frames();
+            /* The teaching session is over: restore motion authorization on
+             * both the success and the sync-failure path, otherwise a
+             * clearable fault would leave the robot READY but permanently
+             * unauthorized. */
+            if (!robot_set_motion_authorized(true)) {
+                (void)robot_set_fault(
+                    ROBOT_FAULT_INTERNAL_STATE);
+            }
             if (robot_sync_reference_to_actual()) {
                 (void)robot_set_run_state(
                     ROBOT_STATE_READY);
