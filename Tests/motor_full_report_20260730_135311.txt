@@ -1,0 +1,24 @@
+﻿[1/3] UART / MCU
+  HELLO     = PASS  ZEROARM/1.0
+  GET_STATE = PASS  run_state=1 fault=0x00000000
+[2/3] Scan motors
+  motor 1: OFFLINE  no CAN response (addr/power/wiring/120ohm/baud)
+[3/3] Motion skipped (-ScanOnly)
+
+============================================================
+ FINAL REPORT
+============================================================
+finished : 2026-07-30 13:53:11
+elapsed  : 0.6s
+uart     : PASS
+mcu      : READY
+scanned  : 1
+online   : 0
+offline  : 1
+------------------------------------------------------------
+ Motor | Online | Link    | Motion | DeltaFw | Residual | Verdict | Detail
+-------+--------+---------+--------+---------+----------+---------+------------------------------
+     1 |     NO | OFFLINE | SKIP   |       - |        - | FAIL    | no CAN response (addr/power/wiring/120ohm/baud)
+------------------------------------------------------------
+OVERALL = FAIL (no motor online)
+============================================================

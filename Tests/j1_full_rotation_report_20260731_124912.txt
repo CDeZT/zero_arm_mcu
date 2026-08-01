@@ -1,0 +1,9 @@
+﻿ZEROARM J1 FULL-ROTATION HOME/ENCODER REPORT
+time=2026-07-31 12:49:12
+direction.raw0=top-view CCW
+direction.raw1=top-view CW
+continuous_rotation=true
+configured_gear_ratio=50
+limit.active_level=HIGH
+overall=FAIL error=Cannot overwrite variable HOME because it is read-only or constant.
+samples_file=C:\Users\Administrator\CLionProjects\zero_arm_mcu\Tests\j1_full_rotation_report_20260731_124912.samples.csv

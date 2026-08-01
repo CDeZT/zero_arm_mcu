@@ -1,0 +1,10 @@
+﻿ZEROARM J1 FULL-ROTATION HOME/ENCODER REPORT
+time=2026-07-31 12:54:41
+direction.raw0=top-view CCW
+direction.raw1=top-view CW
+continuous_rotation=true
+configured_gear_ratio=50
+limit.active_level=HIGH
+HOME_CW: verdict=PASS search_motor_delta_deg=-3579.2 search_joint_deg=71.584 final_encoder_motor_deg=0 final_limit=HIGH zero_written=true
+overall=PASS
+samples_file=C:\Users\Administrator\CLionProjects\zero_arm_mcu\Tests\j1_full_rotation_report_20260731_125441.samples.csv

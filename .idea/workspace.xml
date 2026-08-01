@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="BackendCodeEditorMiscSettings">
+    <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
+    <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
+  </component>
+  <component name="CMakePresetLoader">{
+  &quot;useNewFormat&quot;: true
+}</component>
+  <component name="CMakeProjectFlavorService">
+    <option name="flavorId" value="CMakePlainProjectFlavor" />
+  </component>
+  <component name="CMakeReloadState">
+    <option name="reloaded" value="true" />
+  </component>
+  <component name="CMakeRunConfigurationManager">
+    <generated>
+      <config projectName="zero_arm_mcu" targetName="test_homing" />
+      <config projectName="zero_arm_mcu" targetName="test_platform_fdcan" />
+      <config projectName="zero_arm_mcu" targetName="test_robot_state_full" />
+      <config projectName="zero_arm_mcu" targetName="test_X_V2" />
+      <config projectName="zero_arm_mcu" targetName="test_platform_gpio" />
+      <config projectName="zero_arm_mcu" targetName="STM32_Drivers" />
+      <config projectName="zero_arm_mcu" targetName="test_motor_manager" />
+      <config projectName="zero_arm_mcu" targetName="zero_arm_mcu" />
+      <config projectName="zero_arm_mcu" targetName="test_trajectory" />
+      <config projectName="zero_arm_mcu" targetName="test_bug_regression" />
+      <config projectName="zero_arm_mcu" targetName="FreeRTOS" />
+      <config projectName="zero_arm_mcu" targetName="test_messages" />
+      <config projectName="zero_arm_mcu" targetName="test_integration" />
+      <config projectName="zero_arm_mcu" targetName="test_protocol_robustness" />
+      <config projectName="zero_arm_mcu" targetName="test_joint_transform" />
+      <config projectName="zero_arm_mcu" targetName="test_robot" />
+      <config projectName="zero_arm_mcu" targetName="test_motion" />
+      <config projectName="zero_arm_mcu" targetName="test_robustness" />
+    </generated>
+  </component>
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" ENABLED="false" CONFIG_NAME="Debug" />
+      <configuration PROFILE_NAME="Debug - Debug" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/build/Debug" />
+      <configuration PROFILE_NAME="Release" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/build/Release" />
+      <configuration PROFILE_NAME="Release - Release" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/build/Release" />
+    </configurations>
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="60813a7f-8887-4432-8747-3de81cd79b9f" name="更改" comment="7-31-18:27">
+      <change afterPath="$PROJECT_DIR$/Tests/j1_full_rotation_report_20260731_124912.samples.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/j1_full_rotation_report_20260731_124912.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/j1_full_rotation_report_20260731_125441.samples.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/j1_full_rotation_report_20260731_125441.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/joint_pair_wiggle_report_20260730_173637.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/joint_wiggle_report_20260730_171941.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/joint_wiggle_report_20260730_172133.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/joint_wiggle_report_20260730_172607.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/joint_wiggle_report_20260730_173102.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/joint_wiggle_report_20260731_170454.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/joint_wiggle_report_20260731_171719.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_110913.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_110957.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_111123.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_111740.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_112139.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_112242.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_112346.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_112507.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_112617.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_114556.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_114605.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_114634.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_114801.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_114901.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_120128.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_120225.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_132948.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_133243.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_133249.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_133304.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_133334.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_133407.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_133449.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_133530.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_133640.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_134841.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_134908.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_134914.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_135233.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_135311.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_135414.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_135453.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_135820.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_135855.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_140507.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_140705.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_140808.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_145733.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_145955.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_171027.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_171358.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_171512.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_171558.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260730_172143.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260731_123352.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/motor_full_report_20260731_123719.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Tests/test_hardware_readonly.ps1" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tmp/live_constraints_20260731_171030.err.log" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tmp/live_constraints_20260731_171030.out.log" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tmp/pdfs/board/stm32g474-v11.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tmp/pdfs/gripper-3.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tmp/pdfs/gripper-4.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tmp/pdfs/gripper-5.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tmp/pdfs/pgripper/page-3.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tmp/pdfs/pgripper/page-5.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tmp/pdfs/pgripper/page-6.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tmp/pdfs/pgripper/page-7.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tmp/pdfs/x42s-protection-088.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="CurrentDebugProfile">
+    <option name="debugProfileId" value="220edb5b-cdf2-491e-b37a-f1b42170abb4" />
+  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug - Debug" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;CDeZT&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/CDeZT/zero_arm_mcu.git&quot;,
+    &quot;accountId&quot;: &quot;fa12302f-0238-4873-a806-84fa0d3083d4&quot;
+  }
+}</component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="KYyc19m4" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3H4Bt84s5GWmSQselMto3f1Ic94" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "CMake 应用程序.zero_arm_mcu.executor": "Run",
+    "CidrDebugProfileConversion": "true",
+    "RunOnceActivity.RadMigrateCodeStyle": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "RunOnceActivity.stm32.stlink.auto.setup": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "RunOnceActivity.west.config.association.type.startup.service": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "ai.kilocode.jetbrains.settings.providers"
+  }
+}]]></component>
+  <component name="RunManager" selected="CMake 应用程序.zero_arm_mcu">
+    <configuration name="FreeRTOS" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="FreeRTOS" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="STM32_Drivers" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="STM32_Drivers" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_X_V2" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_X_V2" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_bug_regression" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_bug_regression" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_homing" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_homing" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_integration" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_integration" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_joint_transform" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_joint_transform" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_messages" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_messages" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_motion" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_motion" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_motor_manager" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_motor_manager" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_platform_fdcan" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_platform_fdcan" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_platform_gpio" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_platform_gpio" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_protocol_robustness" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_protocol_robustness" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_robot" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_robot" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_robot_state_full" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_robot_state_full" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_robustness" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_robustness" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test_trajectory" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="test_trajectory" CONFIG_NAME="Debug - Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="zero_arm_mcu" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="zero_arm_mcu" TARGET_NAME="zero_arm_mcu" CONFIG_NAME="Debug - Debug" RUN_TARGET_PROJECT_NAME="zero_arm_mcu" RUN_TARGET_NAME="zero_arm_mcu">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="CMake 应用程序.FreeRTOS" />
+      <item itemvalue="CMake 应用程序.STM32_Drivers" />
+      <item itemvalue="CMake 应用程序.test_X_V2" />
+      <item itemvalue="CMake 应用程序.test_bug_regression" />
+      <item itemvalue="CMake 应用程序.test_homing" />
+      <item itemvalue="CMake 应用程序.test_integration" />
+      <item itemvalue="CMake 应用程序.test_joint_transform" />
+      <item itemvalue="CMake 应用程序.test_messages" />
+      <item itemvalue="CMake 应用程序.test_motion" />
+      <item itemvalue="CMake 应用程序.test_motor_manager" />
+      <item itemvalue="CMake 应用程序.test_platform_fdcan" />
+      <item itemvalue="CMake 应用程序.test_platform_gpio" />
+      <item itemvalue="CMake 应用程序.test_protocol_robustness" />
+      <item itemvalue="CMake 应用程序.test_robot" />
+      <item itemvalue="CMake 应用程序.test_robot_state_full" />
+      <item itemvalue="CMake 应用程序.test_robustness" />
+      <item itemvalue="CMake 应用程序.test_trajectory" />
+      <item itemvalue="CMake 应用程序.zero_arm_mcu" />
+    </list>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="60813a7f-8887-4432-8747-3de81cd79b9f" name="更改" comment="" />
+      <created>1785117672778</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1785117672778</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VCPKGProject">
+    <isAutomaticCheckingOnLaunch value="false" />
+    <isAutomaticFoundErrors value="true" />
+    <isAutomaticReloadCMake value="true" />
+    <isAutomaticBootstrapAfterUpdate value="false" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="7-31-18:27" />
+    <option name="LAST_COMMIT_MESSAGE" value="7-31-18:27" />
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>

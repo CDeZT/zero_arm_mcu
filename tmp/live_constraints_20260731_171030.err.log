@@ -1,0 +1,7 @@
+J1 +30: timeout actual=[J1 0.00, J3 0.00, J4 0.00, J5 0.00]
+ËùÔÚÎ»ÖÃ C:\Users\Administrator\CLionProjects\zero_arm_mcu\Tests\test_joint_constraints_live.ps1:254 ×Ö·û: 5
++     throw (
++     ~~~~~~~
+    + CategoryInfo          : OperationStopped: (J1 +30: timeout... 0.00, J5 0.00]:String) [], RuntimeException
+    + FullyQualifiedErrorId : J1 +30: timeout actual=[J1 0.00, J3 0.00, J4 0.00, J5 0.00]
+ 

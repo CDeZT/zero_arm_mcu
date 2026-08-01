@@ -1,0 +1,9 @@
+--- Rejection tests at calibrated zero ---
+J3 below 0: REJECTED_RANGE
+J3 above 135: REJECTED_RANGE
+J4 blocked at J3=0: REJECTED_RANGE
+J5 below -10: REJECTED_RANGE
+J5 +46 blocked at J3=0: REJECTED_RANGE
+--- J1 continuous joint ---
+J1 +30: ACCEPTED
+LIVE_CONSTRAINTS=FAIL error=J1 +30: timeout actual=[J1 0.00, J3 0.00, J4 0.00, J5 0.00]
